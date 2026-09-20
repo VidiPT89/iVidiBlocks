@@ -205,10 +205,6 @@ final class GameViewModel: ObservableObject {
 
     // MARK: Controls
 
-    func togglePause() {
-        if isPaused { resume() } else { pause() }
-    }
-
     func pause() {
         guard result == nil, !isPaused else { return }
         engine.pause()

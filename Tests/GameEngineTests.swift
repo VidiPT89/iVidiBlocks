@@ -293,4 +293,121 @@ final class GameEngineTests: XCTestCase {
         engine.hardDrop()
         XCTAssertEqual(engine.phase, .over(.topOut))
     }
+
+    func testPausingDuringTheCountdownActuallyStopsTheClock() {
+        let engine = GameEngine(mode: .marathon, random: ordered)
+        XCTAssertEqual(engine.phase, .ready)
+
+        engine.pause()
+        XCTAssertEqual(engine.phase, .paused)
+
+        advance(engine, by: GameEngine.readyDuration + 1)
+        XCTAssertNil(engine.current, "the countdown must not run behind the pause overlay")
+
+        engine.resume()
+        XCTAssertEqual(engine.phase, .ready)
+        advance(engine, by: GameEngine.readyDuration + 0.1)
+        XCTAssertNotNil(engine.current)
+    }
+
+    // MARK: Danger vignette
+
+    func testAnEmptyBoardIsNeverInDanger() {
+        XCTAssertEqual(engine().dangerLevel, 0)
+    }
+
+    func testDangerRisesAsTheStackApproachesTheCeiling() {
+        func danger(topRow y: Int) -> Double {
+            var board = Board()
+            filledRow(except: [], at: y, on: &board)
+            return engine(board: board).dangerLevel
+        }
+
+        let farDown = danger(topRow: Board.rows - 1)
+        let closing = danger(topRow: Board.bufferRows + 3)
+        let atTheCeiling = danger(topRow: Board.bufferRows)
+
+        XCTAssertEqual(farDown, 0, "a stack on the floor is not a warning")
+        XCTAssertGreaterThan(closing, 0)
+        XCTAssertLessThan(closing, atTheCeiling)
+        XCTAssertEqual(atTheCeiling, 1)
+    }
+
+    func testDangerIsCappedWhenTheStackReachesTheBuffer() {
+        var board = Board()
+        filledRow(except: [], at: 0, on: &board)
+        XCTAssertEqual(engine(board: board).dangerLevel, 1)
+    }
+
+    // MARK: Events carry what the renderer needs
+
+    func testHardDropEventDescribesThePieceThatLanded() throws {
+        let engine = engine()
+        let start = try XCTUnwrap(engine.current)
+        engine.hardDrop()
+
+        let event = engine.drainEvents().compactMap { event -> (Int, Int, Piece)? in
+            guard case let .hardDropped(rows, from, piece) = event else { return nil }
+            return (rows, from, piece)
+        }.first
+        let landed = try XCTUnwrap(event)
+
+        XCTAssertGreaterThan(landed.0, 0)
+        XCTAssertEqual(landed.1, start.origin.y)
+        XCTAssertEqual(landed.2.type, start.type)
+        XCTAssertEqual(landed.2.origin.y, start.origin.y + landed.0)
+        XCTAssertNotEqual(engine.current, landed.2,
+                          "by drain time the engine has locked it and spawned the next piece, "
+                          + "so the renderer has to take the landed piece from the event")
+    }
+
+    func testLockEventDescribesThePieceThatLanded() throws {
+        let engine = engine()
+        let start = try XCTUnwrap(engine.current)
+        engine.hardDrop()
+
+        let locked = engine.drainEvents().compactMap { event -> Piece? in
+            guard case let .locked(piece) = event else { return nil }
+            return piece
+        }.first
+        let piece = try XCTUnwrap(locked)
+
+        XCTAssertEqual(piece.type, start.type)
+        XCTAssertEqual(piece.cells.count, 4)
+    }
+
+    func testUltraClockKeepsRunningWhileRowsClear() throws {
+        var board = Board()
+        filledRow(except: [0, 1, 2, 3], at: Board.rows - 1, on: &board)
+        let engine = engine(mode: .ultra, board: board)
+
+        while engine.move(dx: -1) {}
+        engine.hardDrop()
+        XCTAssertEqual(engine.phase, .clearing)
+
+        let before = try XCTUnwrap(engine.timeRemaining)
+        advance(engine, by: GameEngine.clearDuration)
+        let after = try XCTUnwrap(engine.timeRemaining)
+
+        XCTAssertEqual(before - after, GameEngine.clearDuration, accuracy: 0.05,
+                       "the Ultra clock must not pause for the clear animation")
+    }
+
+    func testHoldingIntoABlockedSpawnReportsOnlyTheGameOver() {
+        // The I spawns on row 1 and clears these two cells, but the O that
+        // follows it needs row 0 as well, so the swap has nowhere to go.
+        var board = Board()
+        board[4, 0] = .z
+        board[5, 0] = .z
+        let engine = engine(board: board)
+        XCTAssertEqual(engine.current?.type, .i)
+        _ = engine.drainEvents()
+
+        engine.hold()
+
+        let events = engine.drainEvents()
+        XCTAssertTrue(events.contains(.gameOver(reason: .topOut)))
+        XCTAssertFalse(events.contains(.holdSwapped),
+                       "a swap that could not spawn is not a completed swap")
+    }
 }

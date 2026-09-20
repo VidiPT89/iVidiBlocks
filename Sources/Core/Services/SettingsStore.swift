@@ -79,12 +79,20 @@ final class SettingsStore: ObservableObject {
         case colorBlind = "settings.colorBlind"
     }
 
+    static let defaultDas = 0.133
+    static let defaultArr = 0.033
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         theme = AppTheme(rawValue: defaults.string(forKey: Key.theme.rawValue) ?? "") ?? .system
         ghostEnabled = defaults.object(forKey: Key.ghost.rawValue) as? Bool ?? true
-        das = defaults.object(forKey: Key.das.rawValue) as? Double ?? 0.133
-        arr = defaults.object(forKey: Key.arr.rawValue) as? Double ?? 0.033
+        // Clamped on the way in: a value from an older build or a hand-edited
+        // plist must not reach the engine, where a DAS of zero would slam the
+        // piece into the wall on the lightest touch.
+        das = SettingsStore.clamp(defaults.object(forKey: Key.das.rawValue) as? Double,
+                                  to: SettingsStore.dasRange, fallback: SettingsStore.defaultDas)
+        arr = SettingsStore.clamp(defaults.object(forKey: Key.arr.rawValue) as? Double,
+                                  to: SettingsStore.arrRange, fallback: SettingsStore.defaultArr)
         onScreenButtons = defaults.object(forKey: Key.onScreenButtons.rawValue) as? Bool ?? false
         handedness = Handedness(rawValue: defaults.string(forKey: Key.handedness.rawValue) ?? "") ?? .right
         musicEnabled = defaults.object(forKey: Key.music.rawValue) as? Bool ?? true
@@ -99,5 +107,12 @@ final class SettingsStore: ObservableObject {
 
     private func write(_ value: Any, _ key: Key) {
         defaults.set(value, forKey: key.rawValue)
+    }
+
+    private static func clamp(_ value: Double?,
+                              to range: ClosedRange<Double>,
+                              fallback: Double) -> Double {
+        guard let value, value.isFinite else { return fallback }
+        return min(max(value, range.lowerBound), range.upperBound)
     }
 }

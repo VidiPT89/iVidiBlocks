@@ -37,6 +37,9 @@ final class BoardScene: SKScene {
     private var lastUpdate: TimeInterval = 0
     private var lockedDirty = true
     private var traits: UITraitCollection
+    /// The piece from the most recent lock, so effects that belong to it can
+    /// still be placed after the engine has moved on.
+    private var lastLocked: Piece?
 
     // Gesture bookkeeping
     private var touchStart: CGPoint = .zero
@@ -142,11 +145,6 @@ final class BoardScene: SKScene {
         onFrame?()
     }
 
-    /// Called when the view reappears so the clock does not jump.
-    func resetClock() {
-        lastUpdate = 0
-    }
-
     // MARK: Rendering
 
     private func renderLockedBlocks() {
@@ -202,8 +200,8 @@ final class BoardScene: SKScene {
                                   color: uiColor("BrandAmber"))
             }
 
-        case let .hardDropped(rows, fromY):
-            guard rows > 0, let piece = engine.current else { break }
+        case let .hardDropped(rows, fromY, piece):
+            guard rows > 0 else { break }
             let xs = piece.cells.map(\.x)
             let minX = xs.min() ?? 0
             let width = (xs.max() ?? 0) - minX + 1
@@ -213,7 +211,8 @@ final class BoardScene: SKScene {
                                   color: uiColor(piece.type.colorName))
             squashPiece()
 
-        case .locked:
+        case let .locked(piece):
+            lastLocked = piece
             lockedDirty = true
             effects.flash(color: .white, intensity: 0.22, duration: 0.1)
 
@@ -252,7 +251,9 @@ final class BoardScene: SKScene {
             shake(by: 2)
         }
 
-        if outcome.spin != .none, let piece = engine.current ?? engine.ghost {
+        // The spin belongs to the piece that just locked, which the engine has
+        // already let go of, so the ring is centred on the remembered one.
+        if outcome.spin != .none, let piece = lastLocked {
             effects.spinRing(at: position(column: piece.origin.x + 1, row: piece.origin.y + 1),
                              color: uiColor("PieceT"))
         }

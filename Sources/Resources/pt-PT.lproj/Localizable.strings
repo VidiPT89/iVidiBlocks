@@ -7,7 +7,6 @@
 "splash.skip" = "Toca para saltar";
 
 /* Menu principal */
-"menu.play" = "Jogar";
 "menu.settings" = "Definições";
 "menu.stats" = "Estatísticas";
 "menu.howto" = "Como jogar";
@@ -43,7 +42,6 @@
 "game.perfectClear" = "ECRÃ LIMPO";
 "game.levelUp" = "SOBE DE NÍVEL";
 "game.ready" = "PRONTO";
-"game.go" = "JÁ";
 
 /* Pausa */
 "pause.title" = "Em pausa";
@@ -115,10 +113,6 @@
 "howto.tips.body" = "Mantém a pilha plana e deixa uma coluna livre para a peça I. Usa a reserva para guardar uma peça que ainda não consegues encaixar. O contorno esbatido mostra onde a peça vai cair.";
 
 /* Sobre */
-"about.title" = "Sobre";
-"about.website" = "Site";
-"about.github" = "GitHub";
 
 /* Genérico */
-"common.back" = "Voltar";
 "common.close" = "Fechar";

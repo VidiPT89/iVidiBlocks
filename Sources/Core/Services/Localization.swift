@@ -43,14 +43,13 @@ enum AppLanguage: String, CaseIterable, Identifiable {
 
 /// Every user-visible string in the app. Raw values match the keys in
 /// `Localizable.strings`, so nothing is ever written literally in a view.
-enum LocKey: String {
+enum LocKey: String, CaseIterable {
     case appName = "app.name"
     case appTagline = "app.tagline"
 
     case splashDevelopedBy = "splash.developedBy"
     case splashSkip = "splash.skip"
 
-    case menuPlay = "menu.play"
     case menuSettings = "menu.settings"
     case menuStats = "menu.stats"
     case menuHowTo = "menu.howto"
@@ -83,7 +82,6 @@ enum LocKey: String {
     case gamePerfectClear = "game.perfectClear"
     case gameLevelUp = "game.levelUp"
     case gameReady = "game.ready"
-    case gameGo = "game.go"
 
     case pauseTitle = "pause.title"
     case pauseResume = "pause.resume"
@@ -149,11 +147,6 @@ enum LocKey: String {
     case howToTips = "howto.tips"
     case howToTipsBody = "howto.tips.body"
 
-    case aboutTitle = "about.title"
-    case aboutWebsite = "about.website"
-    case aboutGitHub = "about.github"
-
-    case commonBack = "common.back"
     case commonClose = "common.close"
 }
 
@@ -182,14 +175,6 @@ final class LocalizationManager: ObservableObject {
         self.language = language
         bundle = Self.bundle(for: language)
         defaults.set(language.rawValue, forKey: Self.storageKey)
-    }
-
-    func toggleLanguage() {
-        setLanguage(language == .pt ? .en : .pt)
-    }
-
-    func callAsFunction(_ key: LocKey) -> String {
-        string(key)
     }
 
     func string(_ key: LocKey) -> String {

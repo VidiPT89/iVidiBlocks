@@ -51,16 +51,6 @@ enum TetrominoType: Int, CaseIterable, Codable {
         }
     }
 
-    /// Width of the square rotation box: 4 for I, 2 for O, 3 for the rest.
-    /// Only used for centring previews; SRS offsets live in `RotationSystem`.
-    var boxSize: Int {
-        switch self {
-        case .i: return 4
-        case .o: return 2
-        default: return 3
-        }
-    }
-
     /// Cells occupied in each rotation state, relative to the piece origin.
     /// These are the canonical SRS shapes with `y` pointing down.
     func cells(in state: RotationState) -> [Point] {
@@ -114,7 +104,7 @@ enum TetrominoType: Int, CaseIterable, Codable {
 }
 
 /// A tetromino placed on the board: a type, a rotation and an origin.
-struct Piece {
+struct Piece: Equatable {
     var type: TetrominoType
     var state: RotationState
     var origin: Point

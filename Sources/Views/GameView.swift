@@ -9,6 +9,7 @@ struct GameView: View {
     @EnvironmentObject private var audio: AudioManager
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
 
     @StateObject private var model: GameViewModel
     @State private var scene: BoardScene?
@@ -49,6 +50,11 @@ struct GameView: View {
         .onChange(of: colorScheme) { _, _ in refreshSceneTraits() }
         .onChange(of: settings.colorBlindMode) { _, value in scene?.colorBlindMode = value }
         .onChange(of: reduceMotion) { _, value in scene?.reduceMotion = value }
+        // Leaving the app mid-piece should not cost the player the run, so it
+        // is waiting on the pause screen when they come back.
+        .onChange(of: scenePhase) { _, phase in
+            if phase != .active { model.pause() }
+        }
         .onAppear { if scene == nil { makeScene() } }
     }
 

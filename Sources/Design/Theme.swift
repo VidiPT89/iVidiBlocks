@@ -11,7 +11,6 @@ extension Color {
     static let bgPrimary = Color("BgPrimary")
     static let bgSecondary = Color("BgSecondary")
     static let bgElevated = Color("BgElevated")
-    static let gridLine = Color("GridLine")
     static let textPrimary = Color("TextPrimary")
     static let textSecondary = Color("TextSecondary")
 
@@ -31,7 +30,6 @@ extension ShapeStyle where Self == LinearGradient {
 
 enum Layout {
     static let cornerRadius: CGFloat = 20
-    static let tileCorner: CGFloat = 4
     static let cardPadding: CGFloat = 18
     static let minimumTapTarget: CGFloat = 44
 }
@@ -86,13 +84,5 @@ extension View {
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                 .strokeBorder(Color.brandOrange.opacity(0.16), lineWidth: 1)
         )
-    }
-
-    /// Applies a transform only when Reduce Motion is off, so decorative
-    /// movement can be dropped without restructuring the view.
-    @ViewBuilder
-    func ifMotionAllowed<T: View>(_ reduceMotion: Bool,
-                                  transform: (Self) -> T) -> some View {
-        if reduceMotion { self } else { transform(self) }
     }
 }

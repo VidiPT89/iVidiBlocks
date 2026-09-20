@@ -7,7 +7,6 @@
 "splash.skip" = "Tap to skip";
 
 /* Main menu */
-"menu.play" = "Play";
 "menu.settings" = "Settings";
 "menu.stats" = "Statistics";
 "menu.howto" = "How to play";
@@ -43,7 +42,6 @@
 "game.perfectClear" = "PERFECT CLEAR";
 "game.levelUp" = "LEVEL UP";
 "game.ready" = "READY";
-"game.go" = "GO";
 
 /* Pause */
 "pause.title" = "Paused";
@@ -115,10 +113,6 @@
 "howto.tips.body" = "Keep the stack flat and leave one column open for the I piece. Use hold to park a piece you cannot place yet. The faded outline shows where a hard drop will land.";
 
 /* About */
-"about.title" = "About";
-"about.website" = "Website";
-"about.github" = "GitHub";
 
 /* Generic */
-"common.back" = "Back";
 "common.close" = "Close";

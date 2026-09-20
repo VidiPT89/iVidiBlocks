@@ -9,6 +9,7 @@ struct AppRouter: View {
     @EnvironmentObject private var stats: StatsStore
     @EnvironmentObject private var audio: AudioManager
     @EnvironmentObject private var haptics: HapticsManager
+    @Environment(\.scenePhase) private var scenePhase
 
     @State private var showingSplash = true
     @State private var activeMode: GameMode?
@@ -56,6 +57,10 @@ struct AppRouter: View {
             }
         }
         .animation(.easeInOut(duration: 0.35), value: activeMode)
+        .onChange(of: scenePhase) { _, phase in
+            // A game left running owns its own audio through the pause screen.
+            if phase == .active, activeMode == nil { audio.resumeAll() }
+        }
         .onAppear { audio.musicEnabled = settings.musicEnabled }
         .onChange(of: settings.musicEnabled) { _, enabled in audio.musicEnabled = enabled }
         .onChange(of: settings.sfxEnabled) { _, enabled in audio.sfxEnabled = enabled }

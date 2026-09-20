@@ -22,16 +22,13 @@ struct iTetrisApp: App {
                 .environment(\.locale, localization.language.locale)
                 .tint(.brandOrange)
         }
+        // Coming back is deliberately not handled here: a game that was
+        // interrupted returns to its pause screen, and starting the music
+        // again is the job of whichever screen the player lands on.
         .onChange(of: scenePhase) { _, phase in
-            switch phase {
-            case .active:
-                audio.resumeAll()
-            case .background, .inactive:
-                audio.pauseAll()
-                stats.flush()
-            @unknown default:
-                break
-            }
+            guard phase != .active else { return }
+            audio.pauseAll()
+            stats.flush()
         }
     }
 }

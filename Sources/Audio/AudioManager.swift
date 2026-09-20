@@ -51,6 +51,43 @@ final class AudioManager: ObservableObject {
         // A handful of voices so overlapping effects never cut each other off.
         sfxPlayers = (0..<6).map { _ in AVAudioPlayerNode() }
         prepareQueue.async { [weak self] in self?.prepare() }
+        observeInterruptions()
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    /// A phone call or a route change stops the engine. Without this the app
+    /// stays silent until it is relaunched.
+    private func observeInterruptions() {
+        let centre = NotificationCenter.default
+        centre.addObserver(self, selector: #selector(handleInterruption),
+                           name: AVAudioSession.interruptionNotification, object: nil)
+        centre.addObserver(self, selector: #selector(handleConfigurationChange),
+                           name: .AVAudioEngineConfigurationChange, object: engine)
+    }
+
+    @objc private func handleInterruption(_ note: Notification) {
+        guard let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: raw) else { return }
+        switch type {
+        case .began:
+            isRunning = false
+        case .ended:
+            restart()
+        @unknown default:
+            break
+        }
+    }
+
+    @objc private func handleConfigurationChange() {
+        DispatchQueue.main.async { [weak self] in self?.restart() }
+    }
+
+    private func restart() {
+        guard musicBuffer != nil else { return }
+        startEngine()
     }
 
     private func prepare() {
@@ -70,7 +107,6 @@ final class AudioManager: ObservableObject {
     }
 
     private func attachAndStart(format: AVAudioFormat) {
-        configureSession()
         for player in sfxPlayers {
             engine.attach(player)
             engine.connect(player, to: engine.mainMixerNode, format: format)
@@ -78,11 +114,15 @@ final class AudioManager: ObservableObject {
         engine.attach(musicPlayer)
         engine.connect(musicPlayer, to: engine.mainMixerNode, format: format)
         musicPlayer.volume = musicVolume
+        startEngine()
+    }
 
+    private func startEngine() {
+        configureSession()
         do {
             try engine.start()
             isRunning = true
-            for player in sfxPlayers { player.play() }
+            for player in sfxPlayers where !player.isPlaying { player.play() }
             if musicEnabled { startMusic() }
         } catch {
             isRunning = false

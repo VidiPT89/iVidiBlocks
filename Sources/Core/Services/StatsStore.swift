@@ -87,15 +87,17 @@ final class StatsStore: ObservableObject {
                           than existing: ModeRecord?,
                           mode: GameMode,
                           reason: GameOverReason) -> Bool {
-        guard let existing, existing.isSet else {
-            // An unfinished Sprint has no meaningful time to record.
-            return mode.scoring == .highestScore || reason == .targetReached
-        }
         switch mode.scoring {
         case .highestScore:
+            // A run that scored nothing is not an achievement, and showing
+            // "Best 0" under a mode nobody has really played reads as a bug.
+            guard candidate.score > 0 else { return false }
+            guard let existing, existing.isSet else { return true }
             return candidate.score > existing.score
         case .fastestTime:
+            // An unfinished Sprint has no meaningful time to record.
             guard reason == .targetReached else { return false }
+            guard let existing, existing.isSet else { return true }
             return candidate.time < existing.time
         }
     }
@@ -113,17 +115,21 @@ final class StatsStore: ObservableObject {
         }
     }
 
+    private var payload: StatsPayload {
+        StatsPayload(records: records.reduce(into: [:]) { $0[$1.key.rawValue] = $1.value },
+                     lifetime: lifetime)
+    }
+
+    private static func write(_ payload: StatsPayload, to url: URL) {
+        guard let data = try? JSONEncoder().encode(payload) else { return }
+        try? data.write(to: url, options: .atomic)
+    }
+
     private func scheduleSave() {
         saveWorkItem?.cancel()
-        let payload = StatsPayload(
-            records: records.reduce(into: [:]) { $0[$1.key.rawValue] = $1.value },
-            lifetime: lifetime
-        )
+        let snapshot = payload
         let url = fileURL
-        let item = DispatchWorkItem {
-            guard let data = try? JSONEncoder().encode(payload) else { return }
-            try? data.write(to: url, options: .atomic)
-        }
+        let item = DispatchWorkItem { StatsStore.write(snapshot, to: url) }
         saveWorkItem = item
         queue.asyncAfter(deadline: .now() + 1.0, execute: item)
     }
@@ -132,11 +138,6 @@ final class StatsStore: ObservableObject {
     func flush() {
         saveWorkItem?.cancel()
         saveWorkItem = nil
-        let payload = StatsPayload(
-            records: records.reduce(into: [:]) { $0[$1.key.rawValue] = $1.value },
-            lifetime: lifetime
-        )
-        guard let data = try? JSONEncoder().encode(payload) else { return }
-        try? data.write(to: fileURL, options: .atomic)
+        StatsStore.write(payload, to: fileURL)
     }
 }

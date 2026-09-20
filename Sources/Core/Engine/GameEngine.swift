@@ -1,52 +1,7 @@
 import Foundation
 
-/// Tunables the player can change in Settings. Passed in so the engine stays
-/// free of any storage or UI dependency.
-struct GameConfig {
-    var das: TimeInterval = 0.133
-    var arr: TimeInterval = 0.033
-    var ghostEnabled: Bool = true
-    var startLevel: Int = 1
-
-    static let `default` = GameConfig()
-}
-
-/// Something worth reacting to, drained by the renderer once per frame.
-enum GameEvent: Equatable {
-    case spawned
-    case moved
-    case rotated(kicked: Bool)
-    case rotationFailed
-    case softDropped(rows: Int)
-    case hardDropped(rows: Int, from: Int)
-    case locked(cells: [Point])
-    case linesCleared(rows: [Int], outcome: ClearOutcome)
-    case levelUp(Int)
-    case holdSwapped
-    case holdRejected
-    case gameOver(reason: GameOverReason)
-}
-
-extension GameOverReason: Equatable {}
-
-enum GamePhase: Equatable {
-    case ready
-    case playing
-    /// Gravity is frozen while completed rows play their clear animation.
-    case clearing
-    case paused
-    case over(GameOverReason)
-}
-
-/// Accumulated counters for one run, folded into lifetime stats at the end.
-struct RunStats {
-    var piecesPlaced = 0
-    var linesCleared = 0
-    var tetrises = 0
-    var tSpins = 0
-    var maxCombo = 0
-}
-
+/// The rules of the game, and nothing else. No UIKit, no storage, no clock of
+/// its own: the caller ticks it and drains the events it produces.
 final class GameEngine {
 
     // MARK: Configuration
@@ -75,6 +30,8 @@ final class GameEngine {
     private(set) var pendingClearRows: [Int] = []
 
     private var events: [GameEvent] = []
+    /// What to go back to when the pause ends.
+    private var resumePhase: GamePhase = .playing
 
     // MARK: Internal timers
 
@@ -88,10 +45,7 @@ final class GameEngine {
     private var isGrounded = false
     private var lowestRowReached = Int.min
 
-    private var horizontalDirection: Int = 0
-    private var dasTimer: TimeInterval = 0
-    private var dasCharged = false
-    private var arrTimer: TimeInterval = 0
+    private var autoShift: AutoShift
 
     private var softDropping = false
     private var holdUsedThisPiece = false
@@ -114,6 +68,7 @@ final class GameEngine {
         self.mode = mode
         self.config = config
         self.level = config.startLevel
+        self.autoShift = AutoShift(das: config.das, arr: config.arr)
         self.bag = RandomBag(random: random)
         self.board = board
         self.preview = bag.preview
@@ -157,19 +112,41 @@ final class GameEngine {
     // MARK: Pausing
 
     func pause() {
-        guard phase == .playing || phase == .clearing else { return }
-        phase = .paused
-        releaseAllInput()
+        switch phase {
+        case .ready, .playing, .clearing:
+            resumePhase = phase
+            phase = .paused
+            releaseAllInput()
+        case .paused, .over:
+            break
+        }
     }
 
     func resume() {
         guard phase == .paused else { return }
-        phase = pendingClearRows.isEmpty ? .playing : .clearing
+        phase = resumePhase
+        // The accumulator was filled by the frame the player paused on, and
+        // spending it now would drop the piece the instant play resumes.
+        gravityAccumulator = 0
     }
 
     // MARK: Frame update
 
     func update(deltaTime: TimeInterval) {
+        // The run clock covers the clear animation too, otherwise an Ultra
+        // round lasts three minutes plus however long the player spent
+        // watching rows disappear.
+        switch phase {
+        case .playing, .clearing:
+            elapsed += deltaTime
+            if let remaining = timeRemaining, remaining <= 0 {
+                finish(.timeUp)
+                return
+            }
+        case .ready, .paused, .over:
+            break
+        }
+
         switch phase {
         case .ready:
             readyTimer -= deltaTime
@@ -181,11 +158,6 @@ final class GameEngine {
             clearTimer -= deltaTime
             if clearTimer <= 0 { finishLineClear() }
         case .playing:
-            elapsed += deltaTime
-            if let remaining = timeRemaining, remaining <= 0 {
-                finish(.timeUp)
-                return
-            }
             updateHorizontalRepeat(deltaTime: deltaTime)
             updateGravity(deltaTime: deltaTime)
             updateLockDelay(deltaTime: deltaTime)
@@ -253,40 +225,22 @@ final class GameEngine {
     // MARK: Horizontal input with DAS / ARR
 
     func setHorizontalInput(_ direction: Int) {
-        let clamped = direction == 0 ? 0 : (direction > 0 ? 1 : -1)
-        guard clamped != horizontalDirection else { return }
-        horizontalDirection = clamped
-        dasTimer = 0
-        arrTimer = 0
-        dasCharged = false
-        if clamped != 0 { _ = move(dx: clamped) }
+        apply(autoShift.setDirection(direction))
     }
 
     private func updateHorizontalRepeat(deltaTime: TimeInterval) {
-        guard horizontalDirection != 0 else { return }
+        apply(autoShift.tick(deltaTime: deltaTime))
+    }
 
-        if !dasCharged {
-            dasTimer += deltaTime
-            if dasTimer >= config.das {
-                dasCharged = true
-                arrTimer = 0
-                // ARR of zero means slide straight to the wall.
-                if config.arr <= 0 {
-                    while move(dx: horizontalDirection) {}
-                }
-            }
-            return
-        }
-
-        guard config.arr > 0 else {
-            while move(dx: horizontalDirection) {}
-            return
-        }
-
-        arrTimer += deltaTime
-        while arrTimer >= config.arr {
-            arrTimer -= config.arr
-            if !move(dx: horizontalDirection) { break }
+    private func apply(_ shift: AutoShift.Shift) {
+        switch shift {
+        case .stay:
+            break
+        case let .step(amount):
+            let direction = amount > 0 ? 1 : -1
+            for _ in 0..<abs(amount) where !move(dx: direction) { return }
+        case let .slam(direction):
+            while move(dx: direction) {}
         }
     }
 
@@ -297,11 +251,8 @@ final class GameEngine {
     }
 
     private func releaseAllInput() {
-        horizontalDirection = 0
+        autoShift.release()
         softDropping = false
-        dasCharged = false
-        dasTimer = 0
-        arrTimer = 0
     }
 
     // MARK: Player actions
@@ -342,7 +293,7 @@ final class GameEngine {
             lastActionWasRotation = false
         }
         setCurrent(landed)
-        events.append(.hardDropped(rows: rows, from: piece.origin.y))
+        events.append(.hardDropped(rows: rows, from: piece.origin.y, piece: landed))
         lockCurrentPiece()
     }
 
@@ -362,6 +313,9 @@ final class GameEngine {
             holdPiece = outgoing
             spawnNextPiece()
         }
+        // A swap into a blocked spawn ends the run; that is the only thing
+        // worth announcing.
+        if case .over = phase { return }
         events.append(.holdSwapped)
     }
 
@@ -418,11 +372,7 @@ final class GameEngine {
 
         setCurrent(piece)
         events.append(.spawned)
-
-        // Re-apply a held direction so the piece keeps sliding on respawn.
-        if horizontalDirection != 0 && dasCharged {
-            arrTimer = config.arr
-        }
+        autoShift.carryOverToNextPiece()
     }
 
     private func lockCurrentPiece() {
@@ -439,7 +389,7 @@ final class GameEngine {
         ghost = nil
         holdUsedThisPiece = false
         isGrounded = false
-        events.append(.locked(cells: piece.cells))
+        events.append(.locked(piece: piece))
 
         // Lock out: the whole piece finished above the visible playfield.
         if piece.cells.allSatisfy({ $0.y < Board.bufferRows }) {

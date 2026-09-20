@@ -61,6 +61,12 @@ struct SplashView: View {
         .accessibilityAddTraits(style == .launch ? [.isButton] : [])
         .accessibilityHint(style == .launch ? loc.string(.splashSkip) : "")
         .onAppear(perform: animate)
+        .task {
+            guard style == .launch else { return }
+            try? await Task.sleep(for: .seconds(reduceMotion ? 1.6 : 2.6))
+            guard !Task.isCancelled else { return }
+            finish()
+        }
     }
 
     // MARK: Pieces
@@ -164,9 +170,6 @@ struct SplashView: View {
             creditOpacity = 1
             linksOpacity = 1
             glow = 1
-            if style == .launch {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) { finish() }
-            }
             return
         }
 
@@ -185,9 +188,6 @@ struct SplashView: View {
         withAnimation(.easeInOut(duration: 1.0).delay(1.0)) { shimmerX = 260 }
         withAnimation(.easeOut(duration: 0.5).delay(1.3)) { creditOpacity = 1 }
         withAnimation(.easeOut(duration: 0.5).delay(1.6)) { linksOpacity = 1 }
-
-        guard style == .launch else { return }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.6) { finish() }
     }
 
     private func finish() {

@@ -7,19 +7,19 @@
 
 ## ✨ Features
 
-- ✅ Modern guideline rules — Super Rotation System (SRS) with full wall kicks and a 7-bag randomizer
+- ✅ Modern guideline rules: Super Rotation System (SRS) with full wall kicks and a 7-bag randomizer
 - ✅ Hold slot, next-piece preview queue and a toggleable ghost piece
 - ✅ Lock delay with move reset, plus configurable DAS and ARR for competitive-feeling controls
 - ✅ T-spin and T-spin mini detection, Back-to-Back bonus, combo chain and Perfect Clear
-- ✅ Three game modes — Marathon, Sprint (40 lines) and Ultra (3 minutes)
+- ✅ Three game modes: Marathon, Sprint (40 lines) and Ultra (3 minutes)
 - ✅ 20 speed levels with progressive gravity and a danger vignette when the stack gets high
-- ✅ Fluid SpriteKit effects — hard-drop trails, line-clear particles, screen shake, spin rings and level-up flashes
+- ✅ Fluid SpriteKit effects: hard-drop trails, line-clear particles, screen shake, spin rings and level-up flashes
 - ✅ Touch gestures plus optional on-screen buttons in a left or right handed layout
 - ✅ Procedurally synthesized sound effects and music, with custom Core Haptics patterns
 - ✅ Animated splash screen with developer credits, then straight into the main menu
-- ✅ Runtime language switch — Português (PT-PT) and English, independent of the system locale
+- ✅ Runtime language switch: Português (PT-PT) and English, independent of the system locale
 - ✅ Dark mode, Light mode and System mode
-- ✅ Colour identity taken from [ividi.dev](https://ividi.dev/) — burnt orange, amber and near-black
+- ✅ Colour identity taken from [ividi.dev](https://ividi.dev/): burnt orange, amber and near-black
 - ✅ Local records and lifetime stats, plus an in-app how-to-play reference
 - ✅ Accessibility: VoiceOver labels, Reduce Motion and a colour-blind friendly mode
 

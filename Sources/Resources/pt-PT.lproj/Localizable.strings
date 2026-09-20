@@ -95,6 +95,7 @@
 "stats.tetrises" = "Tetrises";
 "stats.tspins" = "T-spins";
 "stats.timePlayed" = "Tempo de jogo";
+"stats.bestCombo" = "Melhor combo";
 "stats.empty" = "Joga uma partida para começares o teu histórico.";
 
 /* Como jogar */
@@ -112,7 +113,15 @@
 "howto.tips" = "Sugestões";
 "howto.tips.body" = "Mantém a pilha plana e deixa uma coluna livre para a peça I. Usa a reserva para guardar uma peça que ainda não consegues encaixar. O contorno esbatido mostra onde a peça vai cair.";
 
-/* Sobre */
+
+/* Controlos no ecrã (VoiceOver) */
+"controls.left" = "Mover para a esquerda";
+"controls.right" = "Mover para a direita";
+"controls.rotateCW" = "Rodar para a direita";
+"controls.rotateCCW" = "Rodar para a esquerda";
+"controls.softDrop" = "Descer mais depressa";
+"controls.hardDrop" = "Largar de imediato";
+"controls.hold" = "Guardar peça";
 
 /* Genérico */
 "common.close" = "Fechar";

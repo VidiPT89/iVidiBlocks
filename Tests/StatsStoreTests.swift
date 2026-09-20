@@ -105,6 +105,14 @@ final class StatsStoreTests: XCTestCase {
         XCTAssertEqual(store.lifetime.timePlayed, 75)
     }
 
+    func testTheBestComboIsKeptRatherThanSummed() {
+        let store = store()
+        submit(store, score: 100, runStats: RunStats(maxCombo: 5))
+        submit(store, score: 100, runStats: RunStats(maxCombo: 2))
+
+        XCTAssertEqual(store.lifetime.bestCombo, 5, "a weaker run must not lower it")
+    }
+
     func testResetClearsEverything() {
         let store = store()
         submit(store, score: 4000, runStats: RunStats(piecesPlaced: 10))

@@ -37,11 +37,7 @@ struct Board {
     }
 
     func canPlace(_ piece: Piece) -> Bool {
-        canPlace(piece, at: piece.state)
-    }
-
-    func canPlace(_ piece: Piece, at state: RotationState) -> Bool {
-        for cell in piece.cells(in: state) where isBlocked(x: cell.x, y: cell.y) {
+        for cell in piece.cells where isBlocked(x: cell.x, y: cell.y) {
             return false
         }
         return true

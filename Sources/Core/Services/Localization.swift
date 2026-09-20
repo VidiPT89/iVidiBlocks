@@ -131,6 +131,7 @@ enum LocKey: String, CaseIterable {
     case statsTetrises = "stats.tetrises"
     case statsTSpins = "stats.tspins"
     case statsTimePlayed = "stats.timePlayed"
+    case statsBestCombo = "stats.bestCombo"
     case statsEmpty = "stats.empty"
 
     case howToTitle = "howto.title"
@@ -147,6 +148,14 @@ enum LocKey: String, CaseIterable {
     case howToTips = "howto.tips"
     case howToTipsBody = "howto.tips.body"
 
+    case controlsLeft = "controls.left"
+    case controlsRight = "controls.right"
+    case controlsRotateCW = "controls.rotateCW"
+    case controlsRotateCCW = "controls.rotateCCW"
+    case controlsSoftDrop = "controls.softDrop"
+    case controlsHardDrop = "controls.hardDrop"
+    case controlsHold = "controls.hold"
+
     case commonClose = "common.close"
 }
 
@@ -159,6 +168,7 @@ final class LocalizationManager: ObservableObject {
     @Published private(set) var language: AppLanguage
 
     private var bundle: Bundle
+    private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -168,13 +178,14 @@ final class LocalizationManager: ObservableObject {
         self.bundle = Self.bundle(for: resolved)
     }
 
-    private let defaults: UserDefaults
-
     func setLanguage(_ language: AppLanguage) {
+        // Stored even when it changes nothing on screen: picking the language
+        // the device already uses is still a choice, and it has to outlive a
+        // later change of the device language.
+        defaults.set(language.rawValue, forKey: Self.storageKey)
         guard language != self.language else { return }
         self.language = language
         bundle = Self.bundle(for: language)
-        defaults.set(language.rawValue, forKey: Self.storageKey)
     }
 
     func string(_ key: LocKey) -> String {

@@ -238,7 +238,9 @@ final class GameEngine {
             break
         case let .step(amount):
             let direction = amount > 0 ? 1 : -1
-            for _ in 0..<abs(amount) where !move(dx: direction) { return }
+            for _ in 0..<abs(amount) {
+                guard move(dx: direction) else { return }
+            }
         case let .slam(direction):
             while move(dx: direction) {}
         }
@@ -485,6 +487,16 @@ final class GameEngine {
 
     private func finish(_ reason: GameOverReason) {
         if case .over = phase { return }
+        // An Ultra clock can expire while rows are still playing their clear
+        // animation. The points were awarded on the lock, so the line count
+        // has to follow rather than be thrown away with the run.
+        if !pendingClearRows.isEmpty {
+            let rows = pendingClearRows
+            pendingClearRows = []
+            board.clearRows(rows)
+            lines += rows.count
+            stats.linesCleared += rows.count
+        }
         phase = .over(reason)
         current = nil
         ghost = nil

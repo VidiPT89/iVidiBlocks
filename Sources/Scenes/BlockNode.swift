@@ -47,9 +47,7 @@ enum BlockTextureFactory {
                                size: CGFloat,
                                style: Style,
                                glyph: String?) -> UIImage {
-        let scale = UIScreen.main.scale
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = scale
+        let format = UIGraphicsImageRendererFormat.preferred()
         format.opaque = false
 
         return UIGraphicsImageRenderer(size: CGSize(width: size, height: size),

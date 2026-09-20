@@ -38,8 +38,9 @@ struct SeededPieceRandom: PieceRandomSource {
 /// The 7-bag randomiser: every group of seven contains each piece exactly
 /// once, so no piece can drought and no piece can flood.
 struct RandomBag {
-    /// How many upcoming pieces the preview can show.
-    static let previewCount = 5
+    /// How many upcoming pieces the preview shows. The HUD draws exactly
+    /// this many, so queueing more would only be waste.
+    static let previewCount = 4
 
     private var queue: [TetrominoType] = []
     private var random: PieceRandomSource

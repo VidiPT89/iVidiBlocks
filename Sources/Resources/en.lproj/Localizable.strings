@@ -95,6 +95,7 @@
 "stats.tetrises" = "Tetrises";
 "stats.tspins" = "T-spins";
 "stats.timePlayed" = "Time played";
+"stats.bestCombo" = "Best combo";
 "stats.empty" = "Play a game to start building your history.";
 
 /* How to play */
@@ -112,7 +113,15 @@
 "howto.tips" = "Tips";
 "howto.tips.body" = "Keep the stack flat and leave one column open for the I piece. Use hold to park a piece you cannot place yet. The faded outline shows where a hard drop will land.";
 
-/* About */
+
+/* On-screen controls (VoiceOver) */
+"controls.left" = "Move left";
+"controls.right" = "Move right";
+"controls.rotateCW" = "Rotate clockwise";
+"controls.rotateCCW" = "Rotate counter-clockwise";
+"controls.softDrop" = "Soft drop";
+"controls.hardDrop" = "Hard drop";
+"controls.hold" = "Hold piece";
 
 /* Generic */
 "common.close" = "Close";

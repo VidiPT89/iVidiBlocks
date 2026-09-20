@@ -120,10 +120,6 @@ struct Piece: Equatable {
         type.cells(in: state).map { $0 + origin }
     }
 
-    func cells(in state: RotationState) -> [Point] {
-        type.cells(in: state).map { $0 + origin }
-    }
-
     func moved(dx: Int, dy: Int) -> Piece {
         var copy = self
         copy.origin = Point(x: origin.x + dx, y: origin.y + dy)

@@ -35,7 +35,7 @@ final class RandomBagTests: XCTestCase {
         }
     }
 
-    func testPreviewShowsFivePiecesWithoutConsumingThem() {
+    func testPreviewDoesNotConsumeThePiecesItShows() {
         var bag = RandomBag(random: SeededPieceRandom(seed: 1))
         let preview = bag.preview
         XCTAssertEqual(preview.count, RandomBag.previewCount)

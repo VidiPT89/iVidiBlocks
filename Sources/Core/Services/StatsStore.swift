@@ -20,6 +20,8 @@ struct LifetimeStats: Codable, Equatable {
     var tetrises = 0
     var tSpins = 0
     var timePlayed: TimeInterval = 0
+    /// Longest chain of consecutive clearing pieces across every run.
+    var bestCombo = 0
 }
 
 private struct StatsPayload: Codable {
@@ -67,6 +69,7 @@ final class StatsStore: ObservableObject {
         lifetime.tetrises += runStats.tetrises
         lifetime.tSpins += runStats.tSpins
         lifetime.timePlayed += time
+        lifetime.bestCombo = max(lifetime.bestCombo, runStats.maxCombo)
 
         let candidate = ModeRecord(score: score, lines: lines, level: level,
                                    time: time, achievedAt: Date())

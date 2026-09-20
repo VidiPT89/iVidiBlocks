@@ -197,9 +197,7 @@ final class GameViewModel: ObservableObject {
         bannerDismiss = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(1100))
             guard !Task.isCancelled else { return }
-            await MainActor.run {
-                withAnimation(.easeOut(duration: 0.25)) { self?.banner = nil }
-            }
+            withAnimation(.easeOut(duration: 0.25)) { self?.banner = nil }
         }
     }
 

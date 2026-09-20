@@ -35,7 +35,6 @@ final class HapticsManager: ObservableObject {
         engine = try? CHHapticEngine()
         // iOS stops the engine when the app backgrounds; bring it straight back.
         engine?.resetHandler = { [weak self] in try? self?.engine?.start() }
-        engine?.stoppedHandler = { _ in }
         try? engine?.start()
     }
 
@@ -58,16 +57,15 @@ final class HapticsManager: ObservableObject {
     /// Four quick hits, one per cleared line.
     func tetris() {
         guard enabled else { return }
-        guard playPattern(events: (0..<4).map { index in
+        let hits = (0..<4).map { index in
             CHHapticEvent(eventType: .hapticTransient,
                           parameters: [
                             .init(parameterID: .hapticIntensity, value: 0.8),
                             .init(parameterID: .hapticSharpness, value: 0.7)
                           ],
                           relativeTime: Double(index) * 0.06)
-        }) else {
-            return tap(heavy)
         }
+        if !playPattern(events: hits) { tap(heavy) }
     }
 
     /// A short rising swell, for landing a T-spin.
@@ -103,7 +101,6 @@ final class HapticsManager: ObservableObject {
         generator.impactOccurred()
     }
 
-    @discardableResult
     private func playPattern(events: [CHHapticEvent]) -> Bool {
         guard let engine,
               let pattern = try? CHHapticPattern(events: events, parameters: []),

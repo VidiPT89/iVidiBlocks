@@ -119,7 +119,7 @@ struct HUDView: View {
     private var nextQueue: some View {
         panel(title: loc.string(.hudNext)) {
             VStack(spacing: 6) {
-                ForEach(Array(model.preview.prefix(4).enumerated()), id: \.offset) { index, type in
+                ForEach(Array(model.preview.enumerated()), id: \.offset) { index, type in
                     PieceThumbnail(type: type,
                                    cellSize: index == 0 ? 9 : 7,
                                    showGlyph: settings.colorBlindMode)

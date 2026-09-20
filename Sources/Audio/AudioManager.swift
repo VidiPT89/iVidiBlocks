@@ -75,7 +75,7 @@ final class AudioManager: ObservableObject {
         case .began:
             isRunning = false
         case .ended:
-            restart()
+            DispatchQueue.main.async { [weak self] in self?.restart() }
         @unknown default:
             break
         }

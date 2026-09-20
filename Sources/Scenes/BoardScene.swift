@@ -228,6 +228,11 @@ final class BoardScene: SKScene {
             lockedDirty = true
 
         case .gameOver:
+            // Drawn here rather than left to the flag below: rendering
+            // recycles the nodes, which would cancel the collapse that is
+            // about to run on them.
+            renderLockedBlocks()
+            lockedDirty = false
             playGameOverCollapse()
 
         case .moved, .softDropped, .rotationFailed, .holdRejected:

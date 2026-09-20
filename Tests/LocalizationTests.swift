@@ -67,4 +67,18 @@ final class LocalizationTests: XCTestCase {
         LocalizationManager(defaults: defaults).setLanguage(.pt)
         XCTAssertEqual(LocalizationManager(defaults: defaults).language, .pt)
     }
+
+    /// Choosing the language the device already uses looks like a no-op, but
+    /// it still has to be written down, or a later change of device language
+    /// would silently overrule the player.
+    func testPickingTheLanguageAlreadyShowingIsStillRecorded() throws {
+        let defaults = UserDefaults(suiteName: #function)!
+        defaults.removePersistentDomain(forName: #function)
+
+        let manager = LocalizationManager(defaults: defaults)
+        let showing = manager.language
+        manager.setLanguage(showing)
+
+        XCTAssertEqual(defaults.string(forKey: "settings.language"), showing.rawValue)
+    }
 }

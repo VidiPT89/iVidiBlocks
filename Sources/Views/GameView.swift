@@ -179,6 +179,8 @@ private struct OnScreenControls: View {
     @ObservedObject var model: GameViewModel
     let handedness: Handedness
 
+    @EnvironmentObject private var loc: LocalizationManager
+
     var body: some View {
         HStack(spacing: 10) {
             if handedness == .left {
@@ -196,20 +198,27 @@ private struct OnScreenControls: View {
 
     private var moveCluster: some View {
         HStack(spacing: 8) {
-            ControlButton(symbol: "arrow.left") { model.moveLeft() }
+            ControlButton(symbol: "arrow.left",
+                          label: loc.string(.controlsLeft)) { model.moveLeft() }
             ControlButton(symbol: "arrow.down",
+                          label: loc.string(.controlsSoftDrop),
                           onPress: { model.softDrop(true) },
                           onRelease: { model.softDrop(false) })
-            ControlButton(symbol: "arrow.right") { model.moveRight() }
+            ControlButton(symbol: "arrow.right",
+                          label: loc.string(.controlsRight)) { model.moveRight() }
         }
     }
 
     private var actionCluster: some View {
         HStack(spacing: 8) {
-            ControlButton(symbol: "arrow.counterclockwise") { model.rotateCounterClockwise() }
-            ControlButton(symbol: "arrow.clockwise") { model.rotateClockwise() }
-            ControlButton(symbol: "arrow.down.to.line") { model.hardDrop() }
-            ControlButton(symbol: "tray.and.arrow.down") { model.hold() }
+            ControlButton(symbol: "arrow.counterclockwise",
+                          label: loc.string(.controlsRotateCCW)) { model.rotateCounterClockwise() }
+            ControlButton(symbol: "arrow.clockwise",
+                          label: loc.string(.controlsRotateCW)) { model.rotateClockwise() }
+            ControlButton(symbol: "arrow.down.to.line",
+                          label: loc.string(.controlsHardDrop)) { model.hardDrop() }
+            ControlButton(symbol: "tray.and.arrow.down",
+                          label: loc.string(.controlsHold)) { model.hold() }
         }
     }
 }
@@ -218,19 +227,24 @@ private struct OnScreenControls: View {
 /// same frame the finger lands.
 private struct ControlButton: View {
     let symbol: String
+    let label: String
     var onPress: () -> Void
     var onRelease: (() -> Void)?
 
     @State private var held = false
 
-    init(symbol: String, onPress: @escaping () -> Void, onRelease: (() -> Void)? = nil) {
+    init(symbol: String,
+         label: String,
+         onPress: @escaping () -> Void,
+         onRelease: (() -> Void)? = nil) {
         self.symbol = symbol
+        self.label = label
         self.onPress = onPress
         self.onRelease = onRelease
     }
 
-    init(symbol: String, action: @escaping () -> Void) {
-        self.init(symbol: symbol, onPress: action, onRelease: nil)
+    init(symbol: String, label: String, action: @escaping () -> Void) {
+        self.init(symbol: symbol, label: label, onPress: action, onRelease: nil)
     }
 
     var body: some View {
@@ -255,6 +269,7 @@ private struct ControlButton: View {
                     }
             )
             .animation(.easeOut(duration: 0.12), value: held)
-            .accessibilityLabel(symbol)
+            .accessibilityLabel(label)
+            .accessibilityAddTraits(.isButton)
     }
 }

@@ -123,8 +123,6 @@ final class GameEngineTests: XCTestCase {
     func testMovingOnTheFloorCannotStallForever() {
         let engine = engine()
         engine.hardDrop()                      // place the I flat on the floor
-        let resting = engine.current!
-        _ = resting
 
         // Bring the next piece down to the floor, then wiggle it endlessly.
         while engine.board.canPlace(engine.current!.moved(dx: 0, dy: 1)) {
@@ -239,6 +237,25 @@ final class GameEngineTests: XCTestCase {
         engine.update(deltaTime: 181)
         XCTAssertEqual(engine.phase, .over(.timeUp))
         XCTAssertEqual(engine.timeRemaining, 0)
+    }
+
+    func testARunEndingMidClearStillCountsTheRowsItCompleted() {
+        var board = Board()
+        filledRow(except: [0, 1, 2, 3], at: Board.rows - 1, on: &board)
+        let engine = engine(mode: .ultra, board: board)
+
+        while engine.move(dx: -1) {}
+        engine.hardDrop()
+        XCTAssertEqual(engine.phase, .clearing)
+        XCTAssertEqual(engine.lines, 0)
+
+        // The clock expires before the clear animation has finished.
+        engine.update(deltaTime: 181)
+
+        XCTAssertEqual(engine.phase, .over(.timeUp))
+        XCTAssertEqual(engine.lines, 1, "the row was completed, so it counts")
+        XCTAssertEqual(engine.stats.linesCleared, 1)
+        XCTAssertTrue(engine.pendingClearRows.isEmpty)
     }
 
     func testAnUnplayedUltraRunStillTopsOut() {

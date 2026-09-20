@@ -40,9 +40,8 @@ enum ToneSynth {
         var release: Double = 0.08
     }
 
-    static var format: AVAudioFormat {
-        AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 2)!
-    }
+    static let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate,
+                                      channels: 2)!
 
     /// Renders notes into a stereo buffer, mixing overlapping notes together.
     static func render(notes: [Note], length: Double? = nil) -> AVAudioPCMBuffer? {

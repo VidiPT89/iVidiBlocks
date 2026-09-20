@@ -125,6 +125,9 @@ struct StatsView: View {
                 StatRow(label: loc.string(.statsTSpins),
                         value: stats.lifetime.tSpins.formatted(),
                         highlighted: true)
+                StatRow(label: loc.string(.statsBestCombo),
+                        value: stats.lifetime.bestCombo.formatted(),
+                        highlighted: true)
                 StatRow(label: loc.string(.statsTimePlayed),
                         value: TimeFormat.duration(stats.lifetime.timePlayed))
             }

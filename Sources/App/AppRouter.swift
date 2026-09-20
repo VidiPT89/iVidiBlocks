@@ -16,7 +16,12 @@ struct AppRouter: View {
     var body: some View {
         ZStack {
             BrandBackground()
+            content
+        }
+    }
 
+    private var content: some View {
+        ZStack {
             if let mode = activeMode {
                 GameView(mode: mode,
                          settings: settings,
@@ -36,15 +41,18 @@ struct AppRouter: View {
                 }
                 .transition(.opacity)
             }
-
+        }
+        // Kept hidden until the splash has lifted away. Without this the menu
+        // and the splash both show the wordmark, at different heights, for the
+        // length of the transition.
+        .opacity(showingSplash ? 0 : 1)
+        .animation(.easeIn(duration: 0.3).delay(0.15), value: showingSplash)
+        .overlay {
             if showingSplash {
                 SplashView(style: .launch) {
                     withAnimation(.easeIn(duration: 0.4)) { showingSplash = false }
                 }
-                // Lifts towards the viewer on the way out. A plain crossfade
-                // would briefly show two wordmarks at different heights.
                 .transition(.scale(scale: 1.14).combined(with: .opacity))
-                .zIndex(10)
             }
         }
         .animation(.easeInOut(duration: 0.35), value: activeMode)

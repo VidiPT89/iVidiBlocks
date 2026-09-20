@@ -1,0 +1,124 @@
+/* App identity */
+"app.name" = "iTetris";
+"app.tagline" = "Stack. Clear. Repeat.";
+
+/* Splash */
+"splash.developedBy" = "Developed by David Arsénio Martins";
+"splash.skip" = "Tap to skip";
+
+/* Main menu */
+"menu.play" = "Play";
+"menu.settings" = "Settings";
+"menu.stats" = "Statistics";
+"menu.howto" = "How to play";
+"menu.about" = "About";
+"menu.best" = "Best";
+"menu.noRecord" = "No record yet";
+
+/* Game modes */
+"mode.marathon" = "Marathon";
+"mode.marathon.desc" = "Endless. The speed keeps climbing.";
+"mode.sprint" = "Sprint";
+"mode.sprint.desc" = "Clear 40 lines as fast as you can.";
+"mode.ultra" = "Ultra";
+"mode.ultra.desc" = "Score as high as possible in 3 minutes.";
+
+/* HUD */
+"hud.score" = "Score";
+"hud.level" = "Level";
+"hud.lines" = "Lines";
+"hud.time" = "Time";
+"hud.hold" = "Hold";
+"hud.next" = "Next";
+"hud.combo" = "Combo";
+"hud.b2b" = "Back to back";
+
+/* In-game banners */
+"game.single" = "SINGLE";
+"game.double" = "DOUBLE";
+"game.triple" = "TRIPLE";
+"game.tetris" = "TETRIS";
+"game.tspin" = "T-SPIN";
+"game.tspinMini" = "T-SPIN MINI";
+"game.perfectClear" = "PERFECT CLEAR";
+"game.levelUp" = "LEVEL UP";
+"game.ready" = "READY";
+"game.go" = "GO";
+
+/* Pause */
+"pause.title" = "Paused";
+"pause.resume" = "Resume";
+"pause.restart" = "Restart";
+"pause.quit" = "Quit to menu";
+
+/* Game over */
+"gameover.title" = "Game over";
+"gameover.complete" = "Complete";
+"gameover.timeUp" = "Time up";
+"gameover.newRecord" = "New record";
+"gameover.playAgain" = "Play again";
+"gameover.menu" = "Main menu";
+
+/* Settings */
+"settings.title" = "Settings";
+"settings.language" = "Language";
+"settings.theme" = "Appearance";
+"settings.theme.system" = "System";
+"settings.theme.light" = "Light";
+"settings.theme.dark" = "Dark";
+"settings.gameplay" = "Gameplay";
+"settings.ghost" = "Ghost piece";
+"settings.das" = "Delayed auto shift";
+"settings.arr" = "Auto repeat rate";
+"settings.controls" = "Controls";
+"settings.onScreenButtons" = "On-screen buttons";
+"settings.handedness" = "Button side";
+"settings.handedness.left" = "Left";
+"settings.handedness.right" = "Right";
+"settings.audio" = "Sound";
+"settings.music" = "Music";
+"settings.sfx" = "Sound effects";
+"settings.haptics" = "Haptics";
+"settings.accessibility" = "Accessibility";
+"settings.colorBlind" = "Colour-blind patterns";
+"settings.done" = "Done";
+"settings.resetStats" = "Reset statistics";
+"settings.resetStats.confirm" = "This permanently erases every record and lifetime total.";
+"settings.cancel" = "Cancel";
+"settings.reset" = "Reset";
+
+/* Statistics */
+"stats.title" = "Statistics";
+"stats.records" = "Records";
+"stats.lifetime" = "Lifetime";
+"stats.games" = "Games played";
+"stats.pieces" = "Pieces placed";
+"stats.lines" = "Lines cleared";
+"stats.tetrises" = "Tetrises";
+"stats.tspins" = "T-spins";
+"stats.timePlayed" = "Time played";
+"stats.empty" = "Play a game to start building your history.";
+
+/* How to play */
+"howto.title" = "How to play";
+"howto.goal" = "Goal";
+"howto.goal.body" = "Pieces fall from the top. Fill a whole row to clear it. The game ends when the stack reaches the top.";
+"howto.controls" = "Controls";
+"howto.controls.move" = "Drag left or right to move";
+"howto.controls.rotate" = "Tap either side of the board to rotate";
+"howto.controls.soft" = "Drag down for a soft drop";
+"howto.controls.hard" = "Swipe down for an instant hard drop";
+"howto.controls.hold" = "Swipe up to hold the piece for later";
+"howto.scoring" = "Scoring";
+"howto.scoring.body" = "Clearing four rows at once is a Tetris and pays far more than four singles. Rotating a T piece into a tight gap scores a T-spin. Chain those hard clears back to back for a 1.5× bonus.";
+"howto.tips" = "Tips";
+"howto.tips.body" = "Keep the stack flat and leave one column open for the I piece. Use hold to park a piece you cannot place yet. The faded outline shows where a hard drop will land.";
+
+/* About */
+"about.title" = "About";
+"about.website" = "Website";
+"about.github" = "GitHub";
+
+/* Generic */
+"common.back" = "Back";
+"common.close" = "Close";

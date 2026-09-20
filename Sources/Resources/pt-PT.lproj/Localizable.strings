@@ -1,0 +1,124 @@
+/* Identidade da app */
+"app.name" = "iTetris";
+"app.tagline" = "Empilha. Limpa. Repete.";
+
+/* Apresentação */
+"splash.developedBy" = "Desenvolvido por David Arsénio Martins";
+"splash.skip" = "Toca para saltar";
+
+/* Menu principal */
+"menu.play" = "Jogar";
+"menu.settings" = "Definições";
+"menu.stats" = "Estatísticas";
+"menu.howto" = "Como jogar";
+"menu.about" = "Sobre";
+"menu.best" = "Recorde";
+"menu.noRecord" = "Ainda sem recorde";
+
+/* Modos de jogo */
+"mode.marathon" = "Maratona";
+"mode.marathon.desc" = "Sem fim. A velocidade nunca para de subir.";
+"mode.sprint" = "Sprint";
+"mode.sprint.desc" = "Limpa 40 linhas o mais depressa que conseguires.";
+"mode.ultra" = "Ultra";
+"mode.ultra.desc" = "Faz o máximo de pontos em 3 minutos.";
+
+/* HUD */
+"hud.score" = "Pontos";
+"hud.level" = "Nível";
+"hud.lines" = "Linhas";
+"hud.time" = "Tempo";
+"hud.hold" = "Reserva";
+"hud.next" = "Seguintes";
+"hud.combo" = "Combo";
+"hud.b2b" = "Seguidas";
+
+/* Faixas durante o jogo */
+"game.single" = "SIMPLES";
+"game.double" = "DUPLO";
+"game.triple" = "TRIPLO";
+"game.tetris" = "TETRIS";
+"game.tspin" = "T-SPIN";
+"game.tspinMini" = "T-SPIN MINI";
+"game.perfectClear" = "ECRÃ LIMPO";
+"game.levelUp" = "SOBE DE NÍVEL";
+"game.ready" = "PRONTO";
+"game.go" = "JÁ";
+
+/* Pausa */
+"pause.title" = "Em pausa";
+"pause.resume" = "Continuar";
+"pause.restart" = "Recomeçar";
+"pause.quit" = "Sair para o menu";
+
+/* Fim de jogo */
+"gameover.title" = "Fim de jogo";
+"gameover.complete" = "Concluído";
+"gameover.timeUp" = "Tempo esgotado";
+"gameover.newRecord" = "Novo recorde";
+"gameover.playAgain" = "Jogar outra vez";
+"gameover.menu" = "Menu principal";
+
+/* Definições */
+"settings.title" = "Definições";
+"settings.language" = "Idioma";
+"settings.theme" = "Aspeto";
+"settings.theme.system" = "Sistema";
+"settings.theme.light" = "Claro";
+"settings.theme.dark" = "Escuro";
+"settings.gameplay" = "Jogo";
+"settings.ghost" = "Peça fantasma";
+"settings.das" = "Atraso até repetir";
+"settings.arr" = "Ritmo de repetição";
+"settings.controls" = "Controlos";
+"settings.onScreenButtons" = "Botões no ecrã";
+"settings.handedness" = "Lado dos botões";
+"settings.handedness.left" = "Esquerda";
+"settings.handedness.right" = "Direita";
+"settings.audio" = "Som";
+"settings.music" = "Música";
+"settings.sfx" = "Efeitos sonoros";
+"settings.haptics" = "Vibração";
+"settings.accessibility" = "Acessibilidade";
+"settings.colorBlind" = "Padrões para daltonismo";
+"settings.done" = "Concluído";
+"settings.resetStats" = "Apagar estatísticas";
+"settings.resetStats.confirm" = "Isto apaga definitivamente todos os recordes e totais acumulados.";
+"settings.cancel" = "Cancelar";
+"settings.reset" = "Apagar";
+
+/* Estatísticas */
+"stats.title" = "Estatísticas";
+"stats.records" = "Recordes";
+"stats.lifetime" = "Acumulado";
+"stats.games" = "Jogos feitos";
+"stats.pieces" = "Peças colocadas";
+"stats.lines" = "Linhas limpas";
+"stats.tetrises" = "Tetrises";
+"stats.tspins" = "T-spins";
+"stats.timePlayed" = "Tempo de jogo";
+"stats.empty" = "Joga uma partida para começares o teu histórico.";
+
+/* Como jogar */
+"howto.title" = "Como jogar";
+"howto.goal" = "Objetivo";
+"howto.goal.body" = "As peças caem do topo. Preenche uma linha inteira para a limpares. O jogo acaba quando a pilha chega ao topo.";
+"howto.controls" = "Controlos";
+"howto.controls.move" = "Arrasta para a esquerda ou direita para mover";
+"howto.controls.rotate" = "Toca num dos lados do tabuleiro para rodar";
+"howto.controls.soft" = "Arrasta para baixo para descer mais depressa";
+"howto.controls.hard" = "Desliza rápido para baixo para largar de imediato";
+"howto.controls.hold" = "Desliza para cima para guardar a peça para depois";
+"howto.scoring" = "Pontuação";
+"howto.scoring.body" = "Limpar quatro linhas de uma vez é um Tetris e vale muito mais do que quatro linhas simples. Rodar uma peça T para dentro de um buraco apertado faz um T-spin. Encadeia essas jogadas difíceis seguidas e ganhas mais 1,5×.";
+"howto.tips" = "Sugestões";
+"howto.tips.body" = "Mantém a pilha plana e deixa uma coluna livre para a peça I. Usa a reserva para guardar uma peça que ainda não consegues encaixar. O contorno esbatido mostra onde a peça vai cair.";
+
+/* Sobre */
+"about.title" = "Sobre";
+"about.website" = "Site";
+"about.github" = "GitHub";
+
+/* Genérico */
+"common.back" = "Voltar";
+"common.close" = "Fechar";

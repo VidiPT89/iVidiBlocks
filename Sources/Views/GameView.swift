@@ -68,7 +68,7 @@ struct GameView: View {
             } label: {
                 Image(systemName: "pause.fill")
             }
-            .buttonStyle(IconButtonStyle(size: 38))
+            .buttonStyle(IconButtonStyle())
             .accessibilityLabel(loc.string(.pauseTitle))
 
             Spacer()
@@ -81,7 +81,7 @@ struct GameView: View {
             Spacer()
 
             // Balances the pause button so the mode title stays centred.
-            Color.clear.frame(width: 38, height: 38)
+            Color.clear.frame(width: 44, height: 44)
         }
     }
 
@@ -170,6 +170,7 @@ struct GameView: View {
     private func leave() {
         audio.play(.uiTap)
         model.pause()
+        audio.resumeAll()
         onExit()
     }
 }
@@ -182,6 +183,17 @@ private struct OnScreenControls: View {
     @EnvironmentObject private var loc: LocalizationManager
 
     var body: some View {
+        ViewThatFits(in: .horizontal) {
+            horizontalControls
+            VStack(spacing: 8) {
+                actionCluster
+                moveCluster
+            }
+        }
+        .padding(.horizontal, 4)
+    }
+
+    private var horizontalControls: some View {
         HStack(spacing: 10) {
             if handedness == .left {
                 actionCluster
@@ -193,19 +205,23 @@ private struct OnScreenControls: View {
                 actionCluster
             }
         }
-        .padding(.horizontal, 4)
     }
 
     private var moveCluster: some View {
         HStack(spacing: 8) {
             ControlButton(symbol: "arrow.left",
-                          label: loc.string(.controlsLeft)) { model.moveLeft() }
+                          label: loc.string(.controlsLeft),
+                          onPress: { model.horizontalInput(-1) },
+                          onRelease: { model.horizontalInput(0) })
             ControlButton(symbol: "arrow.down",
                           label: loc.string(.controlsSoftDrop),
                           onPress: { model.softDrop(true) },
-                          onRelease: { model.softDrop(false) })
+                          onRelease: { model.softDrop(false) },
+                          accessibilityPress: { model.engine.softDropStep() })
             ControlButton(symbol: "arrow.right",
-                          label: loc.string(.controlsRight)) { model.moveRight() }
+                          label: loc.string(.controlsRight),
+                          onPress: { model.horizontalInput(1) },
+                          onRelease: { model.horizontalInput(0) })
         }
     }
 
@@ -230,17 +246,20 @@ private struct ControlButton: View {
     let label: String
     var onPress: () -> Void
     var onRelease: (() -> Void)?
+    var accessibilityPress: (() -> Void)?
 
     @State private var held = false
 
     init(symbol: String,
          label: String,
          onPress: @escaping () -> Void,
-         onRelease: (() -> Void)? = nil) {
+         onRelease: (() -> Void)? = nil,
+         accessibilityPress: (() -> Void)? = nil) {
         self.symbol = symbol
         self.label = label
         self.onPress = onPress
         self.onRelease = onRelease
+        self.accessibilityPress = accessibilityPress
     }
 
     init(symbol: String, label: String, action: @escaping () -> Void) {
@@ -271,5 +290,17 @@ private struct ControlButton: View {
             .animation(.easeOut(duration: 0.12), value: held)
             .accessibilityLabel(label)
             .accessibilityAddTraits(.isButton)
+            .accessibilityAction {
+                if let accessibilityPress {
+                    accessibilityPress()
+                } else {
+                    onPress()
+                    onRelease?()
+                }
+            }
+            .onDisappear {
+                held = false
+                onRelease?()
+            }
     }
 }

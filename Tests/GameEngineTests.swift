@@ -427,4 +427,91 @@ final class GameEngineTests: XCTestCase {
         XCTAssertFalse(events.contains(.holdSwapped),
                        "a swap that could not spawn is not a completed swap")
     }
+    func testSoftDropNeverSlowsHighLevelGravity() throws {
+        let config = GameConfig(das: 0.133, arr: 0.033, ghostEnabled: true, startLevel: 20)
+        let normal = engine(config: config)
+        let soft = engine(config: config)
+        soft.setSoftDrop(true)
+        normal.update(deltaTime: 1.0 / 60)
+        soft.update(deltaTime: 1.0 / 60)
+        XCTAssertGreaterThanOrEqual(try XCTUnwrap(soft.current).origin.y,
+                                   try XCTUnwrap(normal.current).origin.y)
+    }
+
+    func testInvalidFrameDurationsDoNotChangeTheRun() {
+        let engine = engine()
+        let piece = engine.current
+        for delta in [-1.0, .nan, .infinity, 0] { engine.update(deltaTime: delta) }
+        XCTAssertEqual(engine.elapsed, 0)
+        XCTAssertEqual(engine.current, piece)
+    }
+
+    func testUltraElapsedTimeStopsAtTheLimit() {
+        let engine = engine(mode: .ultra)
+        engine.update(deltaTime: 181)
+        XCTAssertEqual(engine.elapsed, 180)
+    }
+
+    func testInputPressedWhilePausedDoesNotLeakIntoResume() {
+        let engine = engine()
+        let piece = engine.current
+        engine.pause()
+        engine.setHorizontalInput(1)
+        engine.setSoftDrop(true)
+        engine.resume()
+        advance(engine, by: 0.3)
+        XCTAssertEqual(engine.current, piece)
+    }
+
+    func testZeroMovementDoesNotEmitAnEvent() {
+        let engine = engine()
+        _ = engine.drainEvents()
+        XCTAssertFalse(engine.move(dx: 0))
+        XCTAssertTrue(engine.drainEvents().isEmpty)
+    }
+
+    func testHeldHorizontalInputRepeatsAndStopsOnRelease() throws {
+        let engine = engine()
+        engine.setHorizontalInput(-1)
+        let firstX = try XCTUnwrap(engine.current).origin.x
+        advance(engine, by: 0.25)
+        XCTAssertLessThan(try XCTUnwrap(engine.current).origin.x, firstX)
+        engine.setHorizontalInput(0)
+        let releasedX = engine.current?.origin.x
+        advance(engine, by: 0.25)
+        XCTAssertEqual(engine.current?.origin.x, releasedX)
+    }
+
+    func testStartImmediatelyCannotReplaceAnActivePiece() {
+        let engine = engine()
+        let piece = engine.current
+        let preview = engine.preview
+        engine.startImmediately()
+        XCTAssertEqual(engine.current, piece)
+        XCTAssertEqual(engine.preview, preview)
+    }
+
+    func testClockUsesRealElapsedTimeEvenWhenPhysicsIsClamped() {
+        let engine = engine(mode: .ultra)
+        let piece = engine.current
+        engine.update(deltaTime: 0.05, clockDeltaTime: 2)
+        XCTAssertEqual(engine.elapsed, 2)
+        XCTAssertEqual(engine.current, piece)
+        engine.pause()
+        engine.update(deltaTime: 0.05, clockDeltaTime: 20)
+        XCTAssertEqual(engine.elapsed, 2)
+    }
+
+    func testAccessibleSoftDropMovesOneRowAndAwardsOnePoint() throws {
+        let engine = engine()
+        let y = try XCTUnwrap(engine.current).origin.y
+        engine.softDropStep()
+        XCTAssertEqual(engine.current?.origin.y, y + 1)
+        XCTAssertEqual(engine.score, 1)
+        engine.pause()
+        engine.softDropStep()
+        XCTAssertEqual(engine.current?.origin.y, y + 1)
+        XCTAssertEqual(engine.score, 1)
+    }
+
 }

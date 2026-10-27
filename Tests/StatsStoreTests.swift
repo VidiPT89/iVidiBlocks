@@ -151,4 +151,16 @@ final class StatsStoreTests: XCTestCase {
         XCTAssertNil(store.record(for: .marathon))
         XCTAssertEqual(store.lifetime, LifetimeStats())
     }
+    func testDebouncedWritesCannotRestoreStatsAfterResetAndFlush() {
+        let first = store()
+        submit(first, score: 7777)
+        first.reset()
+        first.flush()
+        let settled = expectation(description: "pending saves settled")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { settled.fulfill() }
+        wait(for: [settled], timeout: 3)
+        XCTAssertNil(store().record(for: .marathon))
+        XCTAssertEqual(store().lifetime.gamesPlayed, 0)
+    }
+
 }

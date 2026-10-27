@@ -75,7 +75,7 @@ Language, appearance, DAS/ARR, ghost piece, control layout, music and haptics ar
 | Tap left / right side of the board | Rotate counter-clockwise / clockwise |
 | Swipe up | Hold |
 
-Prefer buttons? Turn on **On-screen buttons** in Settings and pick a left or right handed layout.
+Prefer buttons? Turn on **On-screen buttons** in Settings and pick a left or right handed layout. Hold a horizontal arrow to repeat movement using DAS/ARR. Controls wrap to two rows on narrow screens and expose VoiceOver actions.
 
 ## 🧪 Testing
 
@@ -83,6 +83,8 @@ Prefer buttons? Turn on **On-screen buttons** in Settings and pick a left or rig
 xcodebuild -project iTetris.xcodeproj -scheme iTetris \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test
 ```
+
+Latest code review and validation: [2026-10-27 audit](docs/2026-10-27-audit.md).
 
 ## 📄 License
 

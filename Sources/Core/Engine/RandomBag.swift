@@ -11,30 +11,6 @@ struct SystemPieceRandom: PieceRandomSource {
     }
 }
 
-/// Deterministic xorshift, used by the unit tests.
-struct SeededPieceRandom: PieceRandomSource {
-    private var state: UInt64
-
-    init(seed: UInt64) {
-        state = seed == 0 ? 0x9E3779B97F4A7C15 : seed
-    }
-
-    private mutating func next() -> UInt64 {
-        state ^= state << 13
-        state ^= state >> 7
-        state ^= state << 17
-        return state
-    }
-
-    mutating func shuffle(_ pieces: inout [TetrominoType]) {
-        guard pieces.count > 1 else { return }
-        for i in stride(from: pieces.count - 1, to: 0, by: -1) {
-            let j = Int(next() % UInt64(i + 1))
-            pieces.swapAt(i, j)
-        }
-    }
-}
-
 /// The 7-bag randomiser: every group of seven contains each piece exactly
 /// once, so no piece can drought and no piece can flood.
 struct RandomBag {
@@ -51,7 +27,7 @@ struct RandomBag {
     }
 
     private mutating func refillIfNeeded() {
-        // Keep two bags queued so the 5-piece preview is always full.
+        // Refill before consuming so the preview always stays full.
         while queue.count <= RandomBag.previewCount {
             var bag = TetrominoType.allCases
             random.shuffle(&bag)

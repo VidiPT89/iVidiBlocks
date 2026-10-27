@@ -7,7 +7,7 @@ final class GameEngine {
     // MARK: Configuration
 
     let mode: GameMode
-    var config: GameConfig
+    let config: GameConfig
 
     // MARK: Observable state
 
@@ -77,6 +77,7 @@ final class GameEngine {
 
     /// Skips the countdown. Tests call this to start playing immediately.
     func startImmediately() {
+        guard phase == .ready else { return }
         readyTimer = 0
         phase = .playing
         spawnNextPiece()
@@ -132,13 +133,16 @@ final class GameEngine {
 
     // MARK: Frame update
 
-    func update(deltaTime: TimeInterval) {
+    func update(deltaTime: TimeInterval, clockDeltaTime: TimeInterval? = nil) {
+        guard deltaTime.isFinite, deltaTime > 0 else { return }
+        let clockDelta = clockDeltaTime ?? deltaTime
+        guard clockDelta.isFinite, clockDelta >= 0 else { return }
         // The run clock covers the clear animation too, otherwise an Ultra
         // round lasts three minutes plus however long the player spent
         // watching rows disappear.
         switch phase {
         case .playing, .clearing:
-            elapsed += deltaTime
+            elapsed = min(elapsed + clockDelta, mode.timeLimit ?? .infinity)
             if let remaining = timeRemaining, remaining <= 0 {
                 finish(.timeUp)
                 return
@@ -170,7 +174,7 @@ final class GameEngine {
         guard current != nil else { return }
         var interval = ScoreCalculator.gravityInterval(level: level)
         if softDropping {
-            interval = max(interval / 20, 0.02)
+            interval = min(interval, max(interval / 20, 0.02))
         }
 
         gravityAccumulator += deltaTime
@@ -225,6 +229,7 @@ final class GameEngine {
     // MARK: Horizontal input with DAS / ARR
 
     func setHorizontalInput(_ direction: Int) {
+        guard phase == .playing || phase == .clearing || direction == 0 else { return }
         apply(autoShift.setDirection(direction))
     }
 
@@ -247,6 +252,7 @@ final class GameEngine {
     }
 
     func setSoftDrop(_ active: Bool) {
+        guard !active || phase == .playing || phase == .clearing else { return }
         guard softDropping != active else { return }
         softDropping = active
         gravityAccumulator = 0
@@ -261,7 +267,7 @@ final class GameEngine {
 
     @discardableResult
     func move(dx: Int) -> Bool {
-        guard phase == .playing, let piece = current else { return false }
+        guard dx != 0, phase == .playing, let piece = current else { return false }
         let candidate = piece.moved(dx: dx, dy: 0)
         guard board.canPlace(candidate) else { return false }
         setCurrent(candidate)
@@ -284,6 +290,17 @@ final class GameEngine {
         registerLockReset()
         events.append(.rotated(kicked: result.kickIndex != 0))
         return true
+    }
+
+    /// One discrete row for assistive input, which cannot hold a touch down.
+    func softDropStep() {
+        guard phase == .playing, let piece = current else { return }
+        let candidate = piece.moved(dx: 0, dy: 1)
+        guard board.canPlace(candidate) else { return }
+        setCurrent(candidate)
+        lastActionWasRotation = false
+        score += ScoreCalculator.softDropPoints(rows: 1)
+        events.append(.softDropped(rows: 1))
     }
 
     func hardDrop() {

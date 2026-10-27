@@ -42,6 +42,7 @@ final class AudioManager: ObservableObject {
     private var musicBuffer: AVAudioPCMBuffer?
     private var nextPlayer = 0
     private var isRunning = false
+    private var isPaused = false
     private var duckWorkItem: DispatchWorkItem?
 
     private let musicVolume: Float = 0.22
@@ -74,6 +75,7 @@ final class AudioManager: ObservableObject {
         switch type {
         case .began:
             isRunning = false
+            isPaused = true
         case .ended:
             DispatchQueue.main.async { [weak self] in self?.restart() }
         @unknown default:
@@ -161,7 +163,7 @@ final class AudioManager: ObservableObject {
     }
 
     private func startMusic() {
-        guard isRunning, let buffer = musicBuffer else { return }
+        guard isRunning, !isPaused, let buffer = musicBuffer else { return }
         musicPlayer.stop()
         musicPlayer.volume = musicVolume
         musicPlayer.scheduleBuffer(buffer, at: nil, options: .loops)
@@ -173,13 +175,16 @@ final class AudioManager: ObservableObject {
     }
 
     func pauseAll() {
+        isPaused = true
         guard isRunning else { return }
         musicPlayer.pause()
+        for player in sfxPlayers { player.stop() }
     }
 
     func resumeAll() {
+        isPaused = false
         guard isRunning, musicEnabled else { return }
-        musicPlayer.play()
+        startMusic()
     }
 
     // MARK: Sound design

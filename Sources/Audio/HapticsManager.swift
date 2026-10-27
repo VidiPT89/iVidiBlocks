@@ -107,7 +107,12 @@ final class HapticsManager: ObservableObject {
               let player = try? engine.makePlayer(with: pattern) else {
             return false
         }
-        try? player.start(atTime: CHHapticTimeImmediate)
-        return true
+        do {
+            try engine.start()
+            try player.start(atTime: CHHapticTimeImmediate)
+            return true
+        } catch {
+            return false
+        }
     }
 }

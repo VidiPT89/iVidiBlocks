@@ -82,3 +82,13 @@ final class LocalizationTests: XCTestCase {
         XCTAssertEqual(defaults.string(forKey: "settings.language"), showing.rawValue)
     }
 }
+
+final class TimeFormatTests: XCTestCase {
+    func testCountdownDoesNotShowZeroBeforeTheDeadline() {
+        XCTAssertEqual(TimeFormat.countdown(180), "3:00")
+        XCTAssertEqual(TimeFormat.countdown(179.99), "3:00")
+        XCTAssertEqual(TimeFormat.countdown(0.01), "0:01")
+        XCTAssertEqual(TimeFormat.countdown(0), "0:00")
+        XCTAssertEqual(TimeFormat.countdown(-1), "0:00")
+    }
+}

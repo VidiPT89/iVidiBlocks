@@ -118,17 +118,20 @@ final class BoardScene: SKScene {
     // MARK: Frame loop
 
     override func update(_ currentTime: TimeInterval) {
+        let elapsed: TimeInterval
         let delta: TimeInterval
         if lastUpdate == 0 {
-            delta = 1.0 / 60.0
+            elapsed = 1.0 / 60.0
+            delta = elapsed
         } else {
             // Clamp so a stall (backgrounding, a long frame) never teleports
             // the piece down the board.
-            delta = min(currentTime - lastUpdate, 1.0 / 20.0)
+            elapsed = max(0, currentTime - lastUpdate)
+            delta = min(elapsed, 1.0 / 20.0)
         }
         lastUpdate = currentTime
 
-        engine.update(deltaTime: delta)
+        engine.update(deltaTime: delta, clockDeltaTime: elapsed)
         background.update(deltaTime: delta)
         effects.updateDanger(engine.dangerLevel, pulse: currentTime)
 

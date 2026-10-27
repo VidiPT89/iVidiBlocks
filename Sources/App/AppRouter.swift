@@ -61,7 +61,10 @@ struct AppRouter: View {
             // A game left running owns its own audio through the pause screen.
             if phase == .active, activeMode == nil { audio.resumeAll() }
         }
-        .onAppear { audio.musicEnabled = settings.musicEnabled }
+        .onAppear {
+            audio.sfxEnabled = settings.sfxEnabled
+            audio.musicEnabled = settings.musicEnabled
+        }
         .onChange(of: settings.musicEnabled) { _, enabled in audio.musicEnabled = enabled }
         .onChange(of: settings.sfxEnabled) { _, enabled in audio.sfxEnabled = enabled }
     }

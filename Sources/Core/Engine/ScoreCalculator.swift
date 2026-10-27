@@ -10,13 +10,6 @@ struct ClearOutcome: Equatable {
     var combo: Int
     var points: Int
 
-    /// Hard clears (a Tetris, or any T-spin that cleared lines) are what
-    /// keeps a back-to-back chain alive.
-    var isDifficult: Bool {
-        if lines == 4 { return true }
-        return spin != .none && lines > 0
-    }
-
     var bannerKey: LocKey? {
         if perfectClear { return .gamePerfectClear }
         switch spin {

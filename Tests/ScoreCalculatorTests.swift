@@ -86,14 +86,4 @@ final class ScoreCalculatorTests: XCTestCase {
         XCTAssertEqual(ScoreCalculator.level(forTotalLines: 45), 5)
     }
 
-    func testDifficultClearsAreFlaggedForBackToBack() {
-        XCTAssertTrue(ClearOutcome(lines: 4, spin: .none, perfectClear: false,
-                                   backToBack: false, combo: 0, points: 0).isDifficult)
-        XCTAssertTrue(ClearOutcome(lines: 1, spin: .full, perfectClear: false,
-                                   backToBack: false, combo: 0, points: 0).isDifficult)
-        XCTAssertFalse(ClearOutcome(lines: 3, spin: .none, perfectClear: false,
-                                    backToBack: false, combo: 0, points: 0).isDifficult)
-        XCTAssertFalse(ClearOutcome(lines: 0, spin: .full, perfectClear: false,
-                                    backToBack: false, combo: 0, points: 0).isDifficult)
-    }
 }

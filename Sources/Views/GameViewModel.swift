@@ -77,6 +77,8 @@ final class GameViewModel: ObservableObject {
 
         haptics.enabled = settings.hapticsEnabled
         audio.sfxEnabled = settings.sfxEnabled
+        level = engine.level
+        countdownText = readyCaption
         preview = engine.preview
         timeRemaining = engine.timeRemaining
         linesRemaining = engine.linesRemaining
@@ -103,6 +105,7 @@ final class GameViewModel: ObservableObject {
         isPaused = false
         banner = nil
         result = nil
+        countdownText = readyCaption
         audio.resumeAll()
     }
 
@@ -217,8 +220,7 @@ final class GameViewModel: ObservableObject {
         audio.resumeAll()
     }
 
-    func moveLeft() { engine.setHorizontalInput(-1); engine.setHorizontalInput(0) }
-    func moveRight() { engine.setHorizontalInput(1); engine.setHorizontalInput(0) }
+    func horizontalInput(_ direction: Int) { engine.setHorizontalInput(direction) }
     func rotateClockwise() { engine.rotate(clockwise: true) }
     func rotateCounterClockwise() { engine.rotate(clockwise: false) }
     func softDrop(_ active: Bool) { engine.setSoftDrop(active) }

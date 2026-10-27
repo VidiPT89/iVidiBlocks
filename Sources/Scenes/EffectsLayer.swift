@@ -63,6 +63,7 @@ final class EffectsLayer: SKNode {
     /// Whitens the rows about to disappear, then bursts them into particles
     /// tinted with the colours that were sitting there.
     func lineClear(rows: [CGFloat], colors: [[UIColor]], isTetris: Bool) {
+        guard !reduceMotion else { return }
         for (index, y) in rows.enumerated() {
             let beam = SKSpriteNode(color: .white,
                                     size: CGSize(width: boardSize.width, height: cellSize))
@@ -80,7 +81,6 @@ final class EffectsLayer: SKNode {
                 .removeFromParent()
             ]))
 
-            guard !reduceMotion else { continue }
             let rowColors = index < colors.count ? colors[index] : []
             emitParticles(atRowY: y, colors: rowColors, count: isTetris ? 10 : 6)
         }

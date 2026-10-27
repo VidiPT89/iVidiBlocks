@@ -75,7 +75,7 @@ struct Board {
     /// Removes the given rows and collapses everything above them down.
     mutating func clearRows(_ rows: [Int]) {
         guard !rows.isEmpty else { return }
-        let doomed = Set(rows)
+        let doomed = Set(rows.filter { (0..<Board.rows).contains($0) })
         var surviving = [TetrominoType?]()
         surviving.reserveCapacity(cells.count)
 
@@ -85,7 +85,7 @@ struct Board {
         }
 
         let padding = Array<TetrominoType?>(repeating: nil,
-                                            count: rows.count * Board.columns)
+                                            count: doomed.count * Board.columns)
         cells = padding + surviving
     }
 

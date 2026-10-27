@@ -141,6 +141,8 @@ final class StatsStore: ObservableObject {
     func flush() {
         saveWorkItem?.cancel()
         saveWorkItem = nil
-        StatsStore.write(payload, to: fileURL)
+        let snapshot = payload
+        // Serialize with any write already running before the flush.
+        queue.sync { StatsStore.write(snapshot, to: fileURL) }
     }
 }

@@ -40,7 +40,7 @@ struct HowToPlayView: View {
     }
 
     private var pieceGallery: some View {
-        HStack(spacing: 14) {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 42))], spacing: 10) {
             ForEach(TetrominoType.allCases, id: \.self) { type in
                 PieceThumbnail(type: type, cellSize: 10)
                     .frame(height: 26)

@@ -15,7 +15,7 @@ enum TimeFormat {
 
     /// `m:ss` for a countdown, where hundredths would only be noise.
     static func countdown(_ interval: TimeInterval) -> String {
-        let clamped = max(0, interval)
+        let clamped = ceil(max(0, interval))
         return String(format: "%d:%02d", Int(clamped) / 60, Int(clamped) % 60)
     }
 

@@ -114,7 +114,7 @@ struct SettingsView: View {
         section(.settingsAccessibility) {
             Toggle(loc.string(.settingsColorBlind), isOn: $settings.colorBlindMode)
             if settings.colorBlindMode {
-                HStack(spacing: 10) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 36))], spacing: 10) {
                     ForEach(TetrominoType.allCases, id: \.self) { type in
                         PieceThumbnail(type: type, cellSize: 9, showGlyph: true)
                             .frame(height: 22)

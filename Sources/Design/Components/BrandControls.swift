@@ -62,7 +62,7 @@ struct LanguageToggle: View {
                     Text(language.shortName)
                         .font(.display(13, weight: .bold))
                         .foregroundStyle(selected ? Color.brandInk : Color.textSecondary)
-                        .frame(minWidth: 34, minHeight: 30)
+                        .frame(minWidth: 44, minHeight: 44)
                         .background {
                             if selected {
                                 Capsule().fill(.brandGradient)

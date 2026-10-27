@@ -78,4 +78,14 @@ final class BoardTests: XCTestCase {
         board[7, 9] = .l
         XCTAssertEqual(board.highestOccupiedRow(), 9)
     }
+    func testDuplicateAndInvalidClearRowsPreserveBoardDimensions() {
+        var board = Board()
+        fillRow(&board, 21)
+        board[0, 20] = .t
+        board.clearRows([21, 21, -1, Board.rows])
+        XCTAssertEqual(board.cells.count, Board.rows * Board.columns)
+        XCTAssertEqual(board[0, 21], .t)
+        XCTAssertEqual(board.cells.compactMap { $0 }.count, 1)
+    }
+
 }

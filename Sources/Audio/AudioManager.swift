@@ -46,7 +46,7 @@ final class AudioManager: ObservableObject {
     private var duckWorkItem: DispatchWorkItem?
 
     private let musicVolume: Float = 0.22
-    private let prepareQueue = DispatchQueue(label: "dev.ividi.itetris.audio", qos: .utility)
+    private let prepareQueue = DispatchQueue(label: "dev.ividi.ividiblocks.audio", qos: .utility)
 
     init() {
         // A handful of voices so overlapping effects never cut each other off.

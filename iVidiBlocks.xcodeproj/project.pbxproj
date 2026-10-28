@@ -658,7 +658,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = dev.ividi.itetris.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.ividi.ividiblocks.tests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/iVidiBlocks.app/iVidiBlocks";
@@ -693,7 +693,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = dev.ividi.itetris.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.ividi.ividiblocks.tests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/iVidiBlocks.app/iVidiBlocks";

@@ -18,7 +18,7 @@ struct ClearOutcome: Equatable {
         case .none: break
         }
         switch lines {
-        case 4: return .gameTetris
+        case 4: return .gameQuad
         case 3: return .gameTriple
         case 2: return .gameDouble
         case 1: return .gameSingle

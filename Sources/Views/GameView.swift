@@ -22,12 +22,13 @@ struct GameView: View {
          haptics: HapticsManager,
          localization: LocalizationManager,
          resuming saved: GameSnapshot? = nil,
+         lesson: Lesson? = nil,
          onExit: @escaping () -> Void) {
         self.onExit = onExit
         _model = StateObject(wrappedValue: GameViewModel(
             mode: mode, settings: settings, stats: stats, savedGames: savedGames,
             audio: audio, haptics: haptics, localization: localization,
-            resuming: saved
+            resuming: saved, lesson: lesson
         ))
     }
 
@@ -37,6 +38,9 @@ struct GameView: View {
 
             VStack(spacing: 10) {
                 topBar
+                if let lesson = model.lesson {
+                    LessonBriefing(lesson: lesson)
+                }
                 HUDView(model: model)
                 board
                 if settings.onScreenButtons {
@@ -84,9 +88,11 @@ struct GameView: View {
 
             Spacer()
 
-            Text(loc.string(model.mode.titleKey).uppercased())
+            Text(loc.string(model.lesson?.titleKey ?? model.mode.titleKey).uppercased())
                 .font(.system(size: 13, weight: .black, design: .rounded))
                 .tracking(2)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
                 .foregroundStyle(Color.brandAmber)
 
             Spacer()
@@ -137,7 +143,14 @@ struct GameView: View {
 
     @ViewBuilder
     private var overlays: some View {
-        if let result = model.result {
+        if let lesson = model.lesson, let outcome = model.lessonOutcome {
+            LessonResultView(lesson: lesson,
+                             passed: outcome == .passed,
+                             onRetry: restart,
+                             onNext: nextLesson,
+                             onExit: leave)
+                .transition(.opacity)
+        } else if let result = model.result {
             GameOverView(model: model, result: result,
                          onPlayAgain: restart, onExit: leave)
                 .transition(.opacity)
@@ -176,6 +189,12 @@ struct GameView: View {
     private func restart() {
         audio.play(.uiTap)
         model.restart()
+        makeScene()
+    }
+
+    private func nextLesson() {
+        audio.play(.uiTap)
+        model.startNextLesson()
         makeScene()
     }
 

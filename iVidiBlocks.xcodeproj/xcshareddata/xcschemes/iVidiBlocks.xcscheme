@@ -15,10 +15,10 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "37B25170643CD88B8330266A"
-               BuildableName = "iTetris.app"
-               BlueprintName = "iTetris"
-               ReferencedContainer = "container:iTetris.xcodeproj">
+               BlueprintIdentifier = "FA986ECA96E74AA0BF193BEB"
+               BuildableName = "iVidiBlocks.app"
+               BlueprintName = "iVidiBlocks"
+               ReferencedContainer = "container:iVidiBlocks.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
          <BuildActionEntry
@@ -29,10 +29,10 @@
             buildForAnalyzing = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "F85B18699B9BE492E6BE22BC"
-               BuildableName = "iTetrisTests.xctest"
-               BlueprintName = "iTetrisTests"
-               ReferencedContainer = "container:iTetris.xcodeproj">
+               BlueprintIdentifier = "E0434252C93BCD759D009D0A"
+               BuildableName = "iVidiBlocksTests.xctest"
+               BlueprintName = "iVidiBlocksTests"
+               ReferencedContainer = "container:iVidiBlocks.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -46,10 +46,10 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "37B25170643CD88B8330266A"
-            BuildableName = "iTetris.app"
-            BlueprintName = "iTetris"
-            ReferencedContainer = "container:iTetris.xcodeproj">
+            BlueprintIdentifier = "FA986ECA96E74AA0BF193BEB"
+            BuildableName = "iVidiBlocks.app"
+            BlueprintName = "iVidiBlocks"
+            ReferencedContainer = "container:iVidiBlocks.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
       <Testables>
@@ -58,10 +58,10 @@
             parallelizable = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "F85B18699B9BE492E6BE22BC"
-               BuildableName = "iTetrisTests.xctest"
-               BlueprintName = "iTetrisTests"
-               ReferencedContainer = "container:iTetris.xcodeproj">
+               BlueprintIdentifier = "E0434252C93BCD759D009D0A"
+               BuildableName = "iVidiBlocksTests.xctest"
+               BlueprintName = "iVidiBlocksTests"
+               ReferencedContainer = "container:iVidiBlocks.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -82,10 +82,10 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "37B25170643CD88B8330266A"
-            BuildableName = "iTetris.app"
-            BlueprintName = "iTetris"
-            ReferencedContainer = "container:iTetris.xcodeproj">
+            BlueprintIdentifier = "FA986ECA96E74AA0BF193BEB"
+            BuildableName = "iVidiBlocks.app"
+            BlueprintName = "iVidiBlocks"
+            ReferencedContainer = "container:iVidiBlocks.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
       <CommandLineArguments>
@@ -101,10 +101,10 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "37B25170643CD88B8330266A"
-            BuildableName = "iTetris.app"
-            BlueprintName = "iTetris"
-            ReferencedContainer = "container:iTetris.xcodeproj">
+            BlueprintIdentifier = "FA986ECA96E74AA0BF193BEB"
+            BuildableName = "iVidiBlocks.app"
+            BlueprintName = "iVidiBlocks"
+            ReferencedContainer = "container:iVidiBlocks.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

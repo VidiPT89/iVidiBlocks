@@ -1,5 +1,5 @@
 import XCTest
-@testable import iTetris
+@testable import iVidiBlocks
 
 /// Deals every bag in the same order, so two engines stay in step however
 /// many bags they draw.

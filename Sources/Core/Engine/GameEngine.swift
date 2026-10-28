@@ -25,6 +25,9 @@ final class GameEngine {
     private(set) var backToBack = false
     private(set) var elapsed: TimeInterval = 0
     private(set) var stats = RunStats()
+    /// Pieces drawn from the bag so far. A swap with the hold slot is not
+    /// a draw.
+    private(set) var piecesDealt = 0
 
     /// Rows waiting for their clear animation to finish.
     private(set) var pendingClearRows: [Int] = []
@@ -447,6 +450,7 @@ final class GameEngine {
 
     private func spawnNextPiece() {
         let type = bag.next()
+        piecesDealt += 1
         preview = bag.preview
         spawn(type: type)
     }
@@ -549,7 +553,7 @@ final class GameEngine {
             backToBack = false
         }
 
-        if cleared == 4 { stats.tetrises += 1 }
+        if cleared == 4 { stats.quads += 1 }
         if spin != .none { stats.tSpins += 1 }
 
         guard cleared > 0 else { return }

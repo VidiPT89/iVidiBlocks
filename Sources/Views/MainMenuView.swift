@@ -3,6 +3,7 @@ import SwiftUI
 struct MainMenuView: View {
     /// Starts a mode, from scratch or from the saved run passed with it.
     let onPlay: (GameMode, GameSnapshot?) -> Void
+    let onPractice: (Lesson) -> Void
 
     @EnvironmentObject private var loc: LocalizationManager
     @EnvironmentObject private var stats: StatsStore
@@ -16,7 +17,7 @@ struct MainMenuView: View {
     @State private var replacingWith: GameMode?
 
     private enum MenuSheet: String, Identifiable {
-        case settings, stats, howTo, about
+        case settings, stats, howTo, about, practice
         var id: String { rawValue }
     }
 
@@ -79,6 +80,7 @@ struct MainMenuView: View {
             case .stats: StatsView()
             case .howTo: HowToPlayView()
             case .about: SplashView(style: .about) { sheet = nil }
+            case .practice: PracticeView(onStart: onPractice)
             }
         }
     }
@@ -107,6 +109,8 @@ struct MainMenuView: View {
 
     private var secondaryActions: some View {
         VStack(spacing: 10) {
+            menuRow(.menuPractice, symbol: "graduationcap.fill",
+                    detail: "\(stats.completedLessons.count)/\(Lesson.all.count)") { sheet = .practice }
             menuRow(.menuHowTo, symbol: "questionmark.circle") { sheet = .howTo }
             menuRow(.menuStats, symbol: "chart.bar.fill") { sheet = .stats }
             menuRow(.menuSettings, symbol: "gearshape.fill") { sheet = .settings }
@@ -115,7 +119,8 @@ struct MainMenuView: View {
         .padding(.top, 4)
     }
 
-    private func menuRow(_ key: LocKey, symbol: String, action: @escaping () -> Void) -> some View {
+    private func menuRow(_ key: LocKey, symbol: String, detail: String? = nil,
+                         action: @escaping () -> Void) -> some View {
         Button {
             audio.play(.uiTap)
             action()
@@ -129,6 +134,11 @@ struct MainMenuView: View {
                     .font(.system(size: 16, weight: .medium, design: .rounded))
                     .foregroundStyle(Color.textPrimary)
                 Spacer()
+                if let detail {
+                    Text(detail)
+                        .font(.caption.weight(.semibold).monospacedDigit())
+                        .foregroundStyle(Color.brandAmber)
+                }
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(Color.textSecondary)

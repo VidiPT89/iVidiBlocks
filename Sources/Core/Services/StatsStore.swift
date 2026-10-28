@@ -17,16 +17,45 @@ struct LifetimeStats: Codable, Equatable {
     var gamesPlayed = 0
     var piecesPlaced = 0
     var linesCleared = 0
-    var tetrises = 0
+    var quads = 0
     var tSpins = 0
     var timePlayed: TimeInterval = 0
     /// Longest chain of consecutive clearing pieces across every run.
     var bestCombo = 0
 }
 
+extension LifetimeStats {
+    /// Missing counters read as zero, so adding one never costs a player
+    /// the history saved by an earlier build.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        gamesPlayed = try c.decodeIfPresent(Int.self, forKey: .gamesPlayed) ?? 0
+        piecesPlaced = try c.decodeIfPresent(Int.self, forKey: .piecesPlaced) ?? 0
+        linesCleared = try c.decodeIfPresent(Int.self, forKey: .linesCleared) ?? 0
+        quads = try c.decodeIfPresent(Int.self, forKey: .quads) ?? 0
+        tSpins = try c.decodeIfPresent(Int.self, forKey: .tSpins) ?? 0
+        timePlayed = try c.decodeIfPresent(TimeInterval.self, forKey: .timePlayed) ?? 0
+        bestCombo = try c.decodeIfPresent(Int.self, forKey: .bestCombo) ?? 0
+    }
+}
+
 private struct StatsPayload: Codable {
     var records: [String: ModeRecord] = [:]
     var lifetime = LifetimeStats()
+    var completedLessons: [String] = []
+
+    init(records: [String: ModeRecord], lifetime: LifetimeStats, completedLessons: [String]) {
+        self.records = records
+        self.lifetime = lifetime
+        self.completedLessons = completedLessons
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        records = try c.decodeIfPresent([String: ModeRecord].self, forKey: .records) ?? [:]
+        lifetime = try c.decodeIfPresent(LifetimeStats.self, forKey: .lifetime) ?? LifetimeStats()
+        completedLessons = try c.decodeIfPresent([String].self, forKey: .completedLessons) ?? []
+    }
 }
 
 /// Records and lifetime totals, kept as one JSON file in Documents. Saves
@@ -36,6 +65,8 @@ final class StatsStore: ObservableObject {
 
     @Published private(set) var records: [GameMode: ModeRecord] = [:]
     @Published private(set) var lifetime = LifetimeStats()
+    /// Ids of the practice lessons passed at least once.
+    @Published private(set) var completedLessons: Set<String> = []
 
     private let fileURL: URL
     private let queue = DispatchQueue(label: "dev.ividi.itetris.stats", qos: .utility)
@@ -66,7 +97,7 @@ final class StatsStore: ObservableObject {
         lifetime.gamesPlayed += 1
         lifetime.piecesPlaced += runStats.piecesPlaced
         lifetime.linesCleared += runStats.linesCleared
-        lifetime.tetrises += runStats.tetrises
+        lifetime.quads += runStats.quads
         lifetime.tSpins += runStats.tSpins
         lifetime.timePlayed += time
         lifetime.bestCombo = max(lifetime.bestCombo, runStats.maxCombo)
@@ -80,9 +111,15 @@ final class StatsStore: ObservableObject {
         return beaten
     }
 
+    func completeLesson(_ lesson: Lesson) {
+        guard completedLessons.insert(lesson.id).inserted else { return }
+        scheduleSave()
+    }
+
     func reset() {
         records = [:]
         lifetime = LifetimeStats()
+        completedLessons = []
         scheduleSave()
     }
 
@@ -113,6 +150,7 @@ final class StatsStore: ObservableObject {
             return
         }
         lifetime = payload.lifetime
+        completedLessons = Set(payload.completedLessons)
         records = payload.records.reduce(into: [:]) { result, entry in
             if let mode = GameMode(rawValue: entry.key) { result[mode] = entry.value }
         }
@@ -120,7 +158,8 @@ final class StatsStore: ObservableObject {
 
     private var payload: StatsPayload {
         StatsPayload(records: records.reduce(into: [:]) { $0[$1.key.rawValue] = $1.value },
-                     lifetime: lifetime)
+                     lifetime: lifetime,
+                     completedLessons: completedLessons.sorted())
     }
 
     private static func write(_ payload: StatsPayload, to url: URL) {

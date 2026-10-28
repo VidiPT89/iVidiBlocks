@@ -250,7 +250,7 @@ final class BoardScene: SKScene {
             }
         }
         effects.lineClear(rows: rows.map(rowCentreY), colors: colors,
-                          isTetris: outcome.lines == 4)
+                          isQuad: outcome.lines == 4)
 
         if outcome.lines == 4 {
             effects.flash(color: uiColor("BrandOrange"), intensity: 0.45, duration: 0.35)

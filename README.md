@@ -1,6 +1,6 @@
-# 🧩 iTetris
+# 🧩 iVidiBlocks
 
-> The classic falling-block puzzle game, natively reimagined for iOS with SwiftUI and SpriteKit.
+> A falling-block puzzle game for iOS, built natively with SwiftUI and SpriteKit, with guided practice drills for every technique.
 
 [![Report Bug](https://img.shields.io/badge/Report-Bug-red)](https://github.com/VidiPT89/iTetris/issues)
 [![Request Feature](https://img.shields.io/badge/Request-Feature-blue)](https://github.com/VidiPT89/iTetris/issues)
@@ -12,6 +12,7 @@
 - ✅ Lock delay with move reset, plus configurable DAS and ARR for competitive-feeling controls
 - ✅ T-spin and T-spin mini detection, Back-to-Back bonus, combo chain and Perfect Clear
 - ✅ Three game modes: Marathon, Sprint (40 lines) and Ultra (3 minutes)
+- ✅ Guided practice: seven drills on prepared boards, from the first hard drop to T-spins, combos and back-to-back quads, with progress saved
 - ✅ 20 speed levels with progressive gravity and a danger vignette when the stack gets high
 - ✅ Fluid SpriteKit effects: hard-drop trails, line-clear particles, screen shake, spin rings and level-up flashes
 - ✅ Touch gestures plus optional on-screen buttons in a left or right handed layout
@@ -49,7 +50,7 @@
 ```bash
 git clone https://github.com/VidiPT89/iTetris.git
 cd iTetris
-open iTetris.xcodeproj
+open iVidiBlocks.xcodeproj
 ```
 
 Build and run (`⌘R`) on the simulator or a connected device.
@@ -61,7 +62,7 @@ Build and run (`⌘R`) on the simulator or a connected device.
 1. Pick a mode: Marathon, Sprint or Ultra
 2. Drag left and right to move, tap either side of the board to rotate
 3. Swipe down for a hard drop, swipe up to hold the current piece
-4. Clear four lines at once for a Tetris, or rotate a T piece into a tight gap for a T-spin
+4. Clear four lines at once for a quad, or rotate a T piece into a tight gap for a T-spin
 5. Chain hard clears back to back for a 1.5× score bonus
 
 Language, appearance, DAS/ARR, ghost piece, control layout, music and haptics are all adjustable in Settings.
@@ -81,7 +82,7 @@ Prefer buttons? Turn on **On-screen buttons** in Settings and pick a left or rig
 ## 🧪 Testing
 
 ```bash
-xcodebuild -project iTetris.xcodeproj -scheme iTetris \
+xcodebuild -project iVidiBlocks.xcodeproj -scheme iVidiBlocks \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test
 ```
 

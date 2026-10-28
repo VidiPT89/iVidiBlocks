@@ -1,5 +1,5 @@
 /* App identity */
-"app.name" = "iTetris";
+"app.name" = "iVidiBlocks";
 "app.tagline" = "Stack. Clear. Repeat.";
 
 /* Splash */
@@ -42,7 +42,7 @@
 "game.single" = "SINGLE";
 "game.double" = "DOUBLE";
 "game.triple" = "TRIPLE";
-"game.tetris" = "TETRIS";
+"game.quad" = "QUAD";
 "game.tspin" = "T-SPIN";
 "game.tspinMini" = "T-SPIN MINI";
 "game.perfectClear" = "PERFECT CLEAR";
@@ -87,7 +87,7 @@
 "settings.colorBlind" = "Colour-blind patterns";
 "settings.done" = "Done";
 "settings.resetStats" = "Reset statistics";
-"settings.resetStats.confirm" = "This permanently erases every record and lifetime total.";
+"settings.resetStats.confirm" = "This permanently erases every record, lifetime total and practice progress.";
 "settings.cancel" = "Cancel";
 "settings.reset" = "Reset";
 
@@ -98,7 +98,7 @@
 "stats.games" = "Games played";
 "stats.pieces" = "Pieces placed";
 "stats.lines" = "Lines cleared";
-"stats.tetrises" = "Tetrises";
+"stats.quads" = "Quads";
 "stats.tspins" = "T-spins";
 "stats.timePlayed" = "Time played";
 "stats.bestCombo" = "Best combo";
@@ -115,9 +115,9 @@
 "howto.controls.hard" = "Swipe down for an instant hard drop";
 "howto.controls.hold" = "Swipe up to hold the piece for later";
 "howto.scoring" = "Scoring";
-"howto.scoring.body" = "Clearing four rows at once is a Tetris and pays far more than four singles. Rotating a T piece into a tight gap scores a T-spin. Chain those hard clears back to back for a 1.5× bonus.";
+"howto.scoring.body" = "Clearing four rows at once is a quad and pays far more than four singles. Rotating a T piece into a tight gap scores a T-spin. Chain those hard clears back to back for a 1.5× bonus.";
 "howto.tips" = "Tips";
-"howto.tips.body" = "Keep the stack flat and leave one column open for the I piece. Use hold to park a piece you cannot place yet. The faded outline shows where a hard drop will land.";
+"howto.tips.body" = "Keep the stack flat and leave one column open for the I piece. Use hold to park a piece you cannot place yet. The faded outline shows where a hard drop will land. New to these moves? Guided practice in the menu walks through each one.";
 
 
 /* On-screen controls (VoiceOver) */
@@ -131,3 +131,27 @@
 
 /* Generic */
 "common.close" = "Close";
+
+/* Guided practice */
+"menu.practice" = "Guided practice";
+"practice.title" = "Guided practice";
+"practice.intro" = "Seven short drills on boards built for each technique, from the first drop to back-to-back quads. Each one deals only the pieces you need.";
+"practice.done" = "Completed";
+"practice.passed" = "Well done!";
+"practice.failed" = "Not this time";
+"practice.next" = "Next drill";
+"practice.retry" = "Try again";
+"lesson.drop" = "Hard drop";
+"lesson.drop.hint" = "Swipe down, or press the hard-drop button, to send the I piece straight into the gap.";
+"lesson.rotate" = "Rotate and move";
+"lesson.rotate.hint" = "Tap the board to stand the I piece upright, drag it to the right wall, then drop it.";
+"lesson.hold" = "Hold";
+"lesson.hold.hint" = "The O piece does not fit. Swipe up to hold it, then drop the I into the gap.";
+"lesson.quad" = "Quad";
+"lesson.quad.hint" = "Stand the I piece upright in the left well to clear four rows at once.";
+"lesson.tspin" = "T-spin";
+"lesson.tspin.hint" = "Tap the left side to turn the T, let it land in the gap, then tap the left side again before it locks.";
+"lesson.combo" = "Combo";
+"lesson.combo.hint" = "Drop each O piece into the gap on the left. Three clears in a row build a combo.";
+"lesson.b2b" = "Back-to-back";
+"lesson.b2b.hint" = "Clear four rows with each I piece. Two quads in a row earn the 1.5× bonus.";

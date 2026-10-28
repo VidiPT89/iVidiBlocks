@@ -1,5 +1,5 @@
 /* Identidade da app */
-"app.name" = "iTetris";
+"app.name" = "iVidiBlocks";
 "app.tagline" = "Empilha. Limpa. Repete.";
 
 /* Apresentação */
@@ -42,7 +42,7 @@
 "game.single" = "SIMPLES";
 "game.double" = "DUPLO";
 "game.triple" = "TRIPLO";
-"game.tetris" = "TETRIS";
+"game.quad" = "QUAD";
 "game.tspin" = "T-SPIN";
 "game.tspinMini" = "T-SPIN MINI";
 "game.perfectClear" = "ECRÃ LIMPO";
@@ -87,7 +87,7 @@
 "settings.colorBlind" = "Padrões para daltonismo";
 "settings.done" = "Concluído";
 "settings.resetStats" = "Apagar estatísticas";
-"settings.resetStats.confirm" = "Isto apaga definitivamente todos os recordes e totais acumulados.";
+"settings.resetStats.confirm" = "Isto apaga definitivamente todos os recordes, totais acumulados e progresso do treino.";
 "settings.cancel" = "Cancelar";
 "settings.reset" = "Apagar";
 
@@ -98,7 +98,7 @@
 "stats.games" = "Jogos feitos";
 "stats.pieces" = "Peças colocadas";
 "stats.lines" = "Linhas limpas";
-"stats.tetrises" = "Tetrises";
+"stats.quads" = "Quádruplas";
 "stats.tspins" = "T-spins";
 "stats.timePlayed" = "Tempo de jogo";
 "stats.bestCombo" = "Melhor combo";
@@ -115,9 +115,9 @@
 "howto.controls.hard" = "Desliza rápido para baixo para largar de imediato";
 "howto.controls.hold" = "Desliza para cima para guardar a peça para depois";
 "howto.scoring" = "Pontuação";
-"howto.scoring.body" = "Limpar quatro linhas de uma vez é um Tetris e vale muito mais do que quatro linhas simples. Rodar uma peça T para dentro de um buraco apertado faz um T-spin. Encadeia essas jogadas difíceis seguidas e ganhas mais 1,5×.";
+"howto.scoring.body" = "Limpar quatro linhas de uma vez é uma quádrupla e vale muito mais do que quatro linhas simples. Rodar uma peça T para dentro de um buraco apertado faz um T-spin. Encadeia essas jogadas difíceis seguidas e ganhas mais 1,5×.";
 "howto.tips" = "Sugestões";
-"howto.tips.body" = "Mantém a pilha plana e deixa uma coluna livre para a peça I. Usa a reserva para guardar uma peça que ainda não consegues encaixar. O contorno esbatido mostra onde a peça vai cair.";
+"howto.tips.body" = "Mantém a pilha plana e deixa uma coluna livre para a peça I. Usa a reserva para guardar uma peça que ainda não consegues encaixar. O contorno esbatido mostra onde a peça vai cair. Ainda não conheces estas jogadas? O Treino guiado, no menu, ensina cada uma.";
 
 
 /* Controlos no ecrã (VoiceOver) */
@@ -131,3 +131,27 @@
 
 /* Genérico */
 "common.close" = "Fechar";
+
+/* Treino guiado */
+"menu.practice" = "Treino guiado";
+"practice.title" = "Treino guiado";
+"practice.intro" = "Sete exercícios curtos, em tabuleiros preparados para cada técnica, da primeira queda às quádruplas seguidas. Cada um dá só as peças de que precisas.";
+"practice.done" = "Concluído";
+"practice.passed" = "Muito bem!";
+"practice.failed" = "Não foi desta";
+"practice.next" = "Exercício seguinte";
+"practice.retry" = "Tentar outra vez";
+"lesson.drop" = "Queda rápida";
+"lesson.drop.hint" = "Desliza para baixo, ou carrega no botão de queda rápida, para mandar a peça I direta para o buraco.";
+"lesson.rotate" = "Rodar e mover";
+"lesson.rotate.hint" = "Toca no tabuleiro para pôr a peça I de pé, arrasta-a até à parede direita e larga-a.";
+"lesson.hold" = "Reservar";
+"lesson.hold.hint" = "A peça O não cabe. Desliza para cima para a reservar e larga a peça I no buraco.";
+"lesson.quad" = "Quádrupla";
+"lesson.quad.hint" = "Põe a peça I de pé no poço da esquerda para limpar quatro linhas de uma vez.";
+"lesson.tspin" = "T-spin";
+"lesson.tspin.hint" = "Toca no lado esquerdo para rodar o T, deixa-o assentar no buraco e volta a tocar no lado esquerdo antes de fixar.";
+"lesson.combo" = "Combo";
+"lesson.combo.hint" = "Larga cada peça O no buraco da esquerda. Três limpezas seguidas fazem um combo.";
+"lesson.b2b" = "Seguidas";
+"lesson.b2b.hint" = "Limpa quatro linhas com cada peça I. Duas quádruplas seguidas dão o bónus de 1,5×.";

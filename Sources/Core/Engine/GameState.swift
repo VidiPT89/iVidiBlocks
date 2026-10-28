@@ -48,7 +48,7 @@ enum GamePhase: Equatable {
 struct RunStats: Codable, Equatable {
     var piecesPlaced = 0
     var linesCleared = 0
-    var tetrises = 0
+    var quads = 0
     var tSpins = 0
     var maxCombo = 0
 }

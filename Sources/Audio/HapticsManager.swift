@@ -55,7 +55,7 @@ final class HapticsManager: ObservableObject {
     }
 
     /// Four quick hits, one per cleared line.
-    func tetris() {
+    func quad() {
         guard enabled else { return }
         let hits = (0..<4).map { index in
             CHHapticEvent(eventType: .hapticTransient,

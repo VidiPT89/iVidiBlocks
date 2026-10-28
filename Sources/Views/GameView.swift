@@ -43,6 +43,7 @@ struct GameView: View {
             }
             .padding(.horizontal, 14)
             .padding(.bottom, 8)
+            .frame(maxWidth: 600)
 
             overlays
         }
@@ -56,6 +57,11 @@ struct GameView: View {
             if phase != .active { model.pause() }
         }
         .onAppear { if scene == nil { makeScene() } }
+        .onDisappear {
+            scene?.onEvent = nil
+            scene?.onFrame = nil
+            scene = nil
+        }
     }
 
     // MARK: Top bar
@@ -141,14 +147,15 @@ struct GameView: View {
     // MARK: Scene lifecycle
 
     private func makeScene() {
-        let scene = BoardScene(engine: model.engine, traits: currentTraits)
+        let source = model.engine
+        let scene = BoardScene(engine: source, traits: currentTraits)
         scene.colorBlindMode = settings.colorBlindMode
         scene.reduceMotion = reduceMotion
-        scene.onEvent = { event in
-            Task { @MainActor in model.handle(event) }
+        scene.onEvent = { [weak model] event in
+            Task { @MainActor [weak model] in model?.handle(event, from: source) }
         }
-        scene.onFrame = {
-            Task { @MainActor in model.syncFromEngine() }
+        scene.onFrame = { [weak model] in
+            Task { @MainActor [weak model] in model?.syncFromEngine(source) }
         }
         self.scene = scene
     }
@@ -211,8 +218,8 @@ private struct OnScreenControls: View {
         HStack(spacing: 8) {
             ControlButton(symbol: "arrow.left",
                           label: loc.string(.controlsLeft),
-                          onPress: { model.horizontalInput(-1) },
-                          onRelease: { model.horizontalInput(0) })
+                          onPress: { model.horizontalInput(-1, pressed: true) },
+                          onRelease: { model.horizontalInput(-1, pressed: false) })
             ControlButton(symbol: "arrow.down",
                           label: loc.string(.controlsSoftDrop),
                           onPress: { model.softDrop(true) },
@@ -220,8 +227,8 @@ private struct OnScreenControls: View {
                           accessibilityPress: { model.engine.softDropStep() })
             ControlButton(symbol: "arrow.right",
                           label: loc.string(.controlsRight),
-                          onPress: { model.horizontalInput(1) },
-                          onRelease: { model.horizontalInput(0) })
+                          onPress: { model.horizontalInput(1, pressed: true) },
+                          onRelease: { model.horizontalInput(1, pressed: false) })
         }
     }
 

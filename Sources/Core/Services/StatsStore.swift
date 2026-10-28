@@ -69,7 +69,7 @@ final class StatsStore: ObservableObject {
     @Published private(set) var completedLessons: Set<String> = []
 
     private let fileURL: URL
-    private let queue = DispatchQueue(label: "dev.ividi.itetris.stats", qos: .utility)
+    private let queue = DispatchQueue(label: "dev.ividi.ividiblocks.stats", qos: .utility)
     private var saveWorkItem: DispatchWorkItem?
 
     init(fileURL: URL? = nil) {

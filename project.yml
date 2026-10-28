@@ -39,6 +39,7 @@ targets:
         NSHumanReadableCopyright: Copyright © David Arsénio Martins
     settings:
       base:
+        # Kept from the first name: the App Store Connect record is tied to it.
         PRODUCT_BUNDLE_IDENTIFIER: dev.ividi.itetris
         PRODUCT_NAME: iVidiBlocks
         TARGETED_DEVICE_FAMILY: "1,2"
@@ -53,7 +54,7 @@ targets:
       - target: iVidiBlocks
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: dev.ividi.itetris.tests
+        PRODUCT_BUNDLE_IDENTIFIER: dev.ividi.ividiblocks.tests
         GENERATE_INFOPLIST_FILE: true
 
 schemes:

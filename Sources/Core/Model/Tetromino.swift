@@ -1,7 +1,7 @@
 import Foundation
 
 /// A cell coordinate on the board. `x` grows right, `y` grows **down**.
-struct Point: Hashable {
+struct Point: Hashable, Codable {
     var x: Int
     var y: Int
 
@@ -11,7 +11,7 @@ struct Point: Hashable {
 }
 
 /// The four SRS rotation states, in clockwise order.
-enum RotationState: Int, CaseIterable {
+enum RotationState: Int, CaseIterable, Codable {
     case spawn = 0
     case right = 1
     case flipped = 2
@@ -104,7 +104,7 @@ enum TetrominoType: Int, CaseIterable, Codable {
 }
 
 /// A tetromino placed on the board: a type, a rotation and an origin.
-struct Piece: Equatable {
+struct Piece: Equatable, Codable {
     var type: TetrominoType
     var state: RotationState
     var origin: Point

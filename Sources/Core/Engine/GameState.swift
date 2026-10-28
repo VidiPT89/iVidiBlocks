@@ -45,10 +45,42 @@ enum GamePhase: Equatable {
 }
 
 /// Accumulated counters for one run, folded into lifetime stats at the end.
-struct RunStats {
+struct RunStats: Codable, Equatable {
     var piecesPlaced = 0
     var linesCleared = 0
     var tetrises = 0
     var tSpins = 0
     var maxCombo = 0
+}
+
+/// Everything needed to put an unfinished run back where it was left, so
+/// leaving the app or quitting to the menu never costs a game in progress.
+/// Player preferences such as DAS, ARR and the ghost are not part of it:
+/// a resumed run picks up whatever Settings say now.
+struct GameSnapshot: Codable, Equatable {
+    /// Bumped whenever the layout changes. A file written by another version
+    /// is discarded rather than half-read into the engine.
+    static let currentVersion = 1
+
+    var version = GameSnapshot.currentVersion
+    var mode: GameMode
+    var startLevel: Int
+    var cells: [TetrominoType?]
+    /// `nil` only while completed rows are waiting for their clear.
+    var current: Piece?
+    var holdPiece: TetrominoType?
+    var holdUsed: Bool
+    var queue: [TetrominoType]
+    var pendingClearRows: [Int]
+    var score: Int
+    var lines: Int
+    var level: Int
+    var combo: Int
+    var backToBack: Bool
+    var elapsed: TimeInterval
+    var stats: RunStats
+    var lockResets: Int
+    var lowestRowReached: Int
+    var lastActionWasRotation: Bool
+    var lastKickIndex: Int
 }

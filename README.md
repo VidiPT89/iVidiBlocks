@@ -21,6 +21,7 @@
 - ✅ Dark mode, Light mode and System mode
 - ✅ Colour identity taken from [ividi.dev](https://ividi.dev/): burnt orange, amber and near-black
 - ✅ Local records and lifetime stats, plus an in-app how-to-play reference
+- ✅ Unfinished runs are saved when you leave the app or quit to the menu, ready to continue or discard
 - ✅ Accessibility: VoiceOver labels, Reduce Motion and a colour-blind friendly mode
 
 ## 🛠️ Tech Stack

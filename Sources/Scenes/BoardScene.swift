@@ -13,7 +13,7 @@ final class BoardScene: SKScene {
     static let boardSize = CGSize(width: cellSize * CGFloat(Board.columns),
                                   height: cellSize * CGFloat(visibleRows))
 
-    var engine: GameEngine
+    let engine: GameEngine
     var onEvent: ((GameEvent) -> Void)?
     /// Fired after every tick so the HUD can pull fresh numbers.
     var onFrame: (() -> Void)?

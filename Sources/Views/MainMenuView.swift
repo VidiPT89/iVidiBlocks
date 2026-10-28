@@ -1,15 +1,19 @@
 import SwiftUI
 
 struct MainMenuView: View {
-    let onPlay: (GameMode) -> Void
+    /// Starts a mode, from scratch or from the saved run passed with it.
+    let onPlay: (GameMode, GameSnapshot?) -> Void
 
     @EnvironmentObject private var loc: LocalizationManager
     @EnvironmentObject private var stats: StatsStore
+    @EnvironmentObject private var savedGames: SavedGameStore
     @EnvironmentObject private var audio: AudioManager
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var sheet: MenuSheet?
     @State private var appeared = false
+    /// A new run waiting for the player to agree to drop the saved one.
+    @State private var replacingWith: GameMode?
 
     private enum MenuSheet: String, Identifiable {
         case settings, stats, howTo, about
@@ -23,10 +27,26 @@ struct MainMenuView: View {
             ScrollView {
                 VStack(spacing: 22) {
                     header
+                    if let saved = savedGames.snapshot {
+                        SavedRunCard(saved: saved,
+                                     onContinue: {
+                                         audio.play(.uiTap)
+                                         onPlay(saved.mode, saved)
+                                     },
+                                     onDiscard: {
+                                         audio.play(.uiTap)
+                                         withAnimation { savedGames.clear() }
+                                     })
+                        .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                    }
                     ForEach(Array(GameMode.allCases.enumerated()), id: \.element) { index, mode in
                         ModeCard(mode: mode, record: stats.record(for: mode)) {
                             audio.play(.uiTap)
-                            onPlay(mode)
+                            if savedGames.snapshot == nil {
+                                onPlay(mode, nil)
+                            } else {
+                                replacingWith = mode
+                            }
                         }
                         .opacity(appeared ? 1 : 0)
                         .offset(y: appeared ? 0 : 26)
@@ -41,6 +61,18 @@ struct MainMenuView: View {
             .scrollBounceBehavior(.basedOnSize)
         }
         .onAppear { appeared = true }
+        .alert(loc.string(.menuReplaceSaved),
+               isPresented: Binding(get: { replacingWith != nil },
+                                    set: { if !$0 { replacingWith = nil } })) {
+            Button(loc.string(.settingsCancel), role: .cancel) {}
+            Button(loc.string(.menuNewGame), role: .destructive) {
+                guard let mode = replacingWith else { return }
+                savedGames.clear()
+                onPlay(mode, nil)
+            }
+        } message: {
+            Text(loc.string(.menuReplaceSavedMessage))
+        }
         .sheet(item: $sheet) { destination in
             switch destination {
             case .settings: SettingsView()
@@ -178,6 +210,59 @@ private struct ModeCard: View {
         case .fastestTime:
             return "\(loc.string(.menuBest)) \(TimeFormat.clock(record.time))"
         }
+    }
+}
+
+/// The run left unfinished last time, offered ahead of a fresh start.
+private struct SavedRunCard: View {
+    let saved: GameSnapshot
+    let onContinue: () -> Void
+    let onDiscard: () -> Void
+
+    @EnvironmentObject private var loc: LocalizationManager
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 12) {
+                Image(systemName: "play.circle.fill")
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundStyle(.brandGradient)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(loc.string(.menuSavedRun).uppercased())
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .tracking(1.2)
+                        .foregroundStyle(Color.brandAmber)
+                    Text(loc.string(saved.mode.titleKey))
+                        .font(.display(19, weight: .bold))
+                        .foregroundStyle(Color.textPrimary)
+                    Text(summary)
+                        .font(.caption.weight(.semibold).monospacedDigit())
+                        .foregroundStyle(Color.textSecondary)
+                }
+                Spacer(minLength: 0)
+            }
+            .accessibilityElement(children: .combine)
+
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) { buttons }
+                VStack(spacing: 10) { buttons }
+            }
+        }
+        .padding(Layout.cardPadding)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .brandCard()
+    }
+
+    @ViewBuilder
+    private var buttons: some View {
+        Button(loc.string(.menuDiscard), action: onDiscard)
+            .buttonStyle(BrandButtonStyle(prominent: false))
+        Button(loc.string(.menuContinue), action: onContinue)
+            .buttonStyle(BrandButtonStyle())
+    }
+
+    private var summary: String {
+        "\(loc.string(.hudScore)) \(saved.score.formatted()) · \(loc.string(.hudLines)) \(saved.lines)"
     }
 }
 

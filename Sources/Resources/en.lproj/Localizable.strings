@@ -13,6 +13,12 @@
 "menu.about" = "About";
 "menu.best" = "Best";
 "menu.noRecord" = "No record yet";
+"menu.savedRun" = "Unfinished run";
+"menu.continue" = "Continue";
+"menu.discard" = "Discard";
+"menu.newGame" = "Start new";
+"menu.replaceSaved" = "Start a new game?";
+"menu.replaceSaved.message" = "Your unfinished run will be discarded.";
 
 /* Game modes */
 "mode.marathon" = "Marathon";

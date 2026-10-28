@@ -59,8 +59,8 @@ final class GameEngine {
 
     // MARK: Lifecycle
 
-    /// - Parameter board: a pre-filled playfield, used to resume a saved
-    ///   game and to set up specific situations in the tests.
+    /// - Parameter board: a pre-filled playfield, used to restore a saved
+    ///   run and to set up specific situations in the tests.
     init(mode: GameMode,
          config: GameConfig = .default,
          random: PieceRandomSource = SystemPieceRandom(),
@@ -73,6 +73,91 @@ final class GameEngine {
         self.board = board
         self.preview = bag.preview
         self.readyTimer = GameEngine.readyDuration
+    }
+
+    /// Brings a saved run back on its pause screen, or returns `nil` when the
+    /// snapshot could not have come from a legal game.
+    convenience init?(restoring saved: GameSnapshot,
+                      config: GameConfig = .default,
+                      random: PieceRandomSource = SystemPieceRandom()) {
+        let mode = saved.mode
+        let expectedLevel = mode.levelsUp
+            ? ScoreCalculator.level(forTotalLines: saved.lines, startingAt: saved.startLevel)
+            : saved.startLevel
+        guard saved.version == GameSnapshot.currentVersion,
+              let board = Board(cells: saved.cells),
+              saved.startLevel >= 1, saved.level == expectedLevel,
+              saved.score >= 0, saved.lines >= 0, saved.combo >= -1,
+              saved.lines < mode.lineTarget ?? .max,
+              saved.elapsed.isFinite, saved.elapsed >= 0,
+              saved.elapsed < mode.timeLimit ?? .infinity,
+              (0...GameEngine.maxLockResets).contains(saved.lockResets),
+              (0...4).contains(saved.lastKickIndex),
+              !saved.holdUsed || saved.holdPiece != nil else { return nil }
+
+        if saved.pendingClearRows.isEmpty {
+            guard let piece = saved.current, board.canPlace(piece) else { return nil }
+        } else {
+            guard saved.current == nil,
+                  Set(saved.pendingClearRows).count == saved.pendingClearRows.count,
+                  saved.pendingClearRows.allSatisfy(board.isRowFull) else { return nil }
+        }
+
+        var restoredConfig = config
+        restoredConfig.startLevel = saved.startLevel
+        self.init(mode: mode, config: restoredConfig, random: random, board: board)
+
+        bag = RandomBag(queue: saved.queue, random: random)
+        preview = bag.preview
+        holdPiece = saved.holdPiece
+        holdUsedThisPiece = saved.holdUsed
+        pendingClearRows = saved.pendingClearRows
+        score = saved.score
+        lines = saved.lines
+        level = saved.level
+        combo = saved.combo
+        backToBack = saved.backToBack
+        elapsed = saved.elapsed
+        stats = saved.stats
+        lockResets = saved.lockResets
+        lowestRowReached = saved.lowestRowReached
+        lastActionWasRotation = saved.lastActionWasRotation
+        lastKickIndex = saved.lastKickIndex
+        clearTimer = GameEngine.clearDuration
+        readyTimer = 0
+        current = saved.current
+        recomputeGhost()
+
+        resumePhase = saved.pendingClearRows.isEmpty ? .playing : .clearing
+        phase = .paused
+    }
+
+    /// The run as it stands, or `nil` before the first piece and after the
+    /// end, when there is nothing worth coming back to.
+    func snapshot() -> GameSnapshot? {
+        switch phase == .paused ? resumePhase : phase {
+        case .playing, .clearing: break
+        case .ready, .paused, .over: return nil
+        }
+        return GameSnapshot(mode: mode,
+                            startLevel: config.startLevel,
+                            cells: board.cells,
+                            current: current,
+                            holdPiece: holdPiece,
+                            holdUsed: holdUsedThisPiece,
+                            queue: bag.queue,
+                            pendingClearRows: pendingClearRows,
+                            score: score,
+                            lines: lines,
+                            level: level,
+                            combo: combo,
+                            backToBack: backToBack,
+                            elapsed: elapsed,
+                            stats: stats,
+                            lockResets: lockResets,
+                            lowestRowReached: lowestRowReached,
+                            lastActionWasRotation: lastActionWasRotation,
+                            lastKickIndex: lastKickIndex)
     }
 
     /// Skips the countdown. Tests call this to start playing immediately.

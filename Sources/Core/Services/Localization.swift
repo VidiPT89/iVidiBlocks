@@ -56,6 +56,12 @@ enum LocKey: String, CaseIterable {
     case menuAbout = "menu.about"
     case menuBest = "menu.best"
     case menuNoRecord = "menu.noRecord"
+    case menuSavedRun = "menu.savedRun"
+    case menuContinue = "menu.continue"
+    case menuDiscard = "menu.discard"
+    case menuNewGame = "menu.newGame"
+    case menuReplaceSaved = "menu.replaceSaved"
+    case menuReplaceSavedMessage = "menu.replaceSaved.message"
 
     case modeMarathon = "mode.marathon"
     case modeMarathonDesc = "mode.marathon.desc"

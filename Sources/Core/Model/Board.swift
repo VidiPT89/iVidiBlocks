@@ -14,6 +14,12 @@ struct Board {
         cells = Array(repeating: nil, count: Board.columns * Board.rows)
     }
 
+    /// Rebuilds a saved playfield, refusing storage of the wrong size.
+    init?(cells: [TetrominoType?]) {
+        guard cells.count == Board.columns * Board.rows else { return nil }
+        self.cells = cells
+    }
+
     subscript(x: Int, y: Int) -> TetrominoType? {
         get {
             guard isInside(x: x, y: y) else { return nil }

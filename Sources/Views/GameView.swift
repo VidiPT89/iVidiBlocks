@@ -17,14 +17,17 @@ struct GameView: View {
     init(mode: GameMode,
          settings: SettingsStore,
          stats: StatsStore,
+         savedGames: SavedGameStore,
          audio: AudioManager,
          haptics: HapticsManager,
          localization: LocalizationManager,
+         resuming saved: GameSnapshot? = nil,
          onExit: @escaping () -> Void) {
         self.onExit = onExit
         _model = StateObject(wrappedValue: GameViewModel(
-            mode: mode, settings: settings, stats: stats,
-            audio: audio, haptics: haptics, localization: localization
+            mode: mode, settings: settings, stats: stats, savedGames: savedGames,
+            audio: audio, haptics: haptics, localization: localization,
+            resuming: saved
         ))
     }
 
@@ -51,10 +54,12 @@ struct GameView: View {
         .onChange(of: colorScheme) { _, _ in refreshSceneTraits() }
         .onChange(of: settings.colorBlindMode) { _, value in scene?.colorBlindMode = value }
         .onChange(of: reduceMotion) { _, value in scene?.reduceMotion = value }
-        // Leaving the app mid-piece should not cost the player the run, so it
-        // is waiting on the pause screen when they come back.
+        // Leaving the app mid-piece should not cost the player the run: it
+        // waits on the pause screen, and is saved in case the app is closed.
         .onChange(of: scenePhase) { _, phase in
-            if phase != .active { model.pause() }
+            guard phase != .active else { return }
+            model.pause()
+            model.saveProgress()
         }
         .onAppear { if scene == nil { makeScene() } }
         .onDisappear {
@@ -177,6 +182,7 @@ struct GameView: View {
     private func leave() {
         audio.play(.uiTap)
         model.pause()
+        model.saveProgress()
         audio.resumeAll()
         onExit()
     }

@@ -2,8 +2,8 @@
 
 > A falling-block puzzle game for iOS, built natively with SwiftUI and SpriteKit, with guided practice drills for every technique.
 
-[![Report Bug](https://img.shields.io/badge/Report-Bug-red)](https://github.com/VidiPT89/iTetris/issues)
-[![Request Feature](https://img.shields.io/badge/Request-Feature-blue)](https://github.com/VidiPT89/iTetris/issues)
+[![Report Bug](https://img.shields.io/badge/Report-Bug-red)](https://github.com/VidiPT89/iVidiBlocks/issues)
+[![Request Feature](https://img.shields.io/badge/Request-Feature-blue)](https://github.com/VidiPT89/iVidiBlocks/issues)
 
 ## ✨ Features
 
@@ -48,8 +48,8 @@
 ### Installation
 
 ```bash
-git clone https://github.com/VidiPT89/iTetris.git
-cd iTetris
+git clone https://github.com/VidiPT89/iVidiBlocks.git
+cd iVidiBlocks
 open iVidiBlocks.xcodeproj
 ```
 
@@ -101,7 +101,7 @@ Distributed under the MIT License. See [LICENSE](LICENSE) for details.
 
 ## 🤝 Contributing
 
-Contributions, issues and feature requests are welcome. Feel free to check the [issues page](https://github.com/VidiPT89/iTetris/issues).
+Contributions, issues and feature requests are welcome. Feel free to check the [issues page](https://github.com/VidiPT89/iVidiBlocks/issues).
 
 ---
 

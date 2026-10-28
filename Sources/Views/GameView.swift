@@ -32,6 +32,12 @@ struct GameView: View {
         ))
     }
 
+    /// Wraps a model that already exists, for previews and layout tests.
+    init(model: GameViewModel, onExit: @escaping () -> Void) {
+        self.onExit = onExit
+        _model = StateObject(wrappedValue: model)
+    }
+
     var body: some View {
         ZStack {
             BrandBackground()

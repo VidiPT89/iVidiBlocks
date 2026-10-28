@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The opening presentation. Four tetrominoes drop in and settle above the
+/// The opening presentation. Four shards drop in and settle above the
 /// wordmark, the title catches a sweep of light, then the credit and the two
 /// links fade up. Tapping anywhere skips straight to the end.
 ///
@@ -29,7 +29,10 @@ struct SplashView: View {
     @State private var glow: Double = 0
     @State private var finished = false
 
-    private let assembling: [TetrominoType] = [.l, .o, .t, .i]
+    private let assembling: [Shard] = [Shard(shape: .bend, color: .ember),
+                                        Shard(shape: .spark, color: .amber),
+                                        Shard(shape: .trio, color: .tide),
+                                        Shard(shape: .duo, color: .ember)]
     private let website = URL(string: "https://ividi.dev/")!
     private let github = URL(string: "https://github.com/VidiPT89/")!
 
@@ -73,9 +76,9 @@ struct SplashView: View {
 
     private var fallingPieces: some View {
         HStack(alignment: .bottom, spacing: 10) {
-            ForEach(Array(assembling.enumerated()), id: \.offset) { index, type in
-                PieceThumbnail(type: type, cellSize: 15)
-                    .shadow(color: Color.piece(type).opacity(0.55), radius: 12)
+            ForEach(Array(assembling.enumerated()), id: \.offset) { index, shard in
+                PieceThumbnail(shard: shard, cellSize: 15)
+                    .shadow(color: Color.piece(shard.color).opacity(0.55), radius: 12)
                     .offset(y: (1 - dropProgress[index]) * -190)
                     .opacity(dropProgress[index] == 0 ? 0 : 1)
                     .scaleEffect(1 + 0.12 * sin(dropProgress[index] * .pi))

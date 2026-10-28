@@ -30,16 +30,16 @@ final class GameViewModel: ObservableObject {
     private(set) var engine: GameEngine
 
     @Published private(set) var score = 0
-    @Published private(set) var lines = 0
+    @Published private(set) var shards = 0
     @Published private(set) var level = 1
-    @Published private(set) var combo = 0
-    @Published private(set) var backToBack = false
-    @Published private(set) var canHold = false
-    @Published private(set) var holdPiece: TetrominoType?
-    @Published private(set) var preview: [TetrominoType] = []
+    @Published private(set) var chain = 0
+    @Published private(set) var canPulse = false
+    /// Pulse charge, 0...1.
+    @Published private(set) var charge = 0.0
+    @Published private(set) var preview: [Shard] = []
     @Published private(set) var elapsed: TimeInterval = 0
     @Published private(set) var timeRemaining: TimeInterval?
-    @Published private(set) var linesRemaining: Int?
+    @Published private(set) var shardsRemaining: Int?
     @Published private(set) var isPaused = false
     @Published private(set) var banner: Banner?
     @Published private(set) var result: GameResult?
@@ -52,7 +52,7 @@ final class GameViewModel: ObservableObject {
     struct GameResult: Equatable {
         let reason: GameOverReason
         let score: Int
-        let lines: Int
+        let shards: Int
         let level: Int
         let time: TimeInterval
         let isNewRecord: Bool
@@ -102,7 +102,8 @@ final class GameViewModel: ObservableObject {
         countdownText = readyCaption
         preview = upcomingPieces
         timeRemaining = engine.timeRemaining
-        linesRemaining = engine.linesRemaining
+        shardsRemaining = engine.shardsRemaining
+        charge = engine.chargeFraction
 
         // A restored run waits on the pause screen until the player is ready.
         if engine.phase == .paused {
@@ -112,11 +113,12 @@ final class GameViewModel: ObservableObject {
         }
     }
 
-    /// A drill runs on Marathon rules at level 1, with its own stack and
-    /// pieces. It is never saved or recorded.
+    /// A drill runs on Orbit rules at level 1, with its own well and
+    /// shards. It is never saved or recorded.
     private static func makeEngine(for lesson: Lesson, config: GameConfig) -> GameEngine {
-        GameEngine(mode: .marathon, config: config,
-                   random: LessonPieces(order: lesson.pieces), board: lesson.board)
+        GameEngine(mode: .orbit, config: config,
+                   random: LessonPieces(order: lesson.pieces), board: lesson.board,
+                   charge: lesson.charged ? GameEngine.pulseCost : 0)
     }
 
     /// Throws the current run away and builds a fresh engine with whatever
@@ -126,7 +128,7 @@ final class GameViewModel: ObservableObject {
         lessonVerdict?.cancel()
         lessonVerdict = nil
         heldDirections = []
-        canHold = false
+        canPulse = false
         if let lesson {
             tracker = LessonTracker(lesson: lesson)
             lessonOutcome = nil
@@ -139,15 +141,14 @@ final class GameViewModel: ObservableObject {
         audio.sfxEnabled = settings.sfxEnabled
 
         score = 0
-        lines = 0
+        shards = 0
         level = settings.gameConfig.startLevel
-        combo = 0
-        backToBack = false
-        holdPiece = nil
+        chain = 0
+        charge = engine.chargeFraction
         preview = upcomingPieces
         elapsed = 0
         timeRemaining = engine.timeRemaining
-        linesRemaining = engine.linesRemaining
+        shardsRemaining = engine.shardsRemaining
         isPaused = false
         banner = nil
         result = nil
@@ -163,20 +164,19 @@ final class GameViewModel: ObservableObject {
     func syncFromEngine(_ source: GameEngine) {
         guard source === engine else { return }
         if score != engine.score { score = engine.score }
-        if lines != engine.lines { lines = engine.lines }
+        if shards != engine.shards { shards = engine.shards }
         if level != engine.level { level = engine.level }
-        if combo != max(engine.combo, 0) { combo = max(engine.combo, 0) }
-        if backToBack != engine.backToBack { backToBack = engine.backToBack }
-        if canHold != engine.canHold { canHold = engine.canHold }
-        if holdPiece != engine.holdPiece { holdPiece = engine.holdPiece }
+        if chain != engine.chain { chain = engine.chain }
+        if canPulse != engine.canPulse { canPulse = engine.canPulse }
+        if charge != engine.chargeFraction { charge = engine.chargeFraction }
         if preview != upcomingPieces { preview = upcomingPieces }
-        // Only Sprint displays elapsed time. Ultra displays whole seconds;
-        // Marathon needs no clock-driven SwiftUI updates at all.
-        let displayElapsed = mode == .sprint ? engine.elapsed : 0
+        // Only Target displays elapsed time. Blitz displays whole seconds;
+        // Orbit needs no clock-driven SwiftUI updates at all.
+        let displayElapsed = mode == .target ? engine.elapsed : 0
         let displayRemaining = engine.timeRemaining.map { ceil($0) }
         if elapsed != displayElapsed { elapsed = displayElapsed }
         if timeRemaining != displayRemaining { timeRemaining = displayRemaining }
-        if linesRemaining != engine.linesRemaining { linesRemaining = engine.linesRemaining }
+        if shardsRemaining != engine.shardsRemaining { shardsRemaining = engine.shardsRemaining }
         if countdownText != readyCaption { countdownText = readyCaption }
         judgeLesson()
     }
@@ -190,7 +190,7 @@ final class GameViewModel: ObservableObject {
 
     private func judgeLesson() {
         guard var tracker, lessonOutcome == nil, lessonVerdict == nil else { return }
-        tracker.settle()
+        tracker.settle(cascading: engine.phase == .clearing)
         self.tracker = tracker
         let outcome = tracker.outcome
         guard outcome != .inProgress, let lesson else { return }
@@ -215,9 +215,9 @@ final class GameViewModel: ObservableObject {
         }
     }
 
-    /// A drill only previews the pieces it still has to deal; the bag's
-    /// filler after them would promise pieces that never come.
-    private var upcomingPieces: [TetrominoType] {
+    /// A drill only previews the shards it still has to deal; the bag's
+    /// filler after them would promise shards that never come.
+    private var upcomingPieces: [Shard] {
         guard let lesson else { return engine.preview }
         return Array(engine.preview.prefix(max(0, lesson.pieces.count - engine.piecesDealt)))
     }
@@ -243,11 +243,15 @@ final class GameViewModel: ObservableObject {
         case .locked:
             audio.play(.lock)
             haptics.lock()
-        case .holdSwapped:
-            audio.play(.hold)
-            haptics.hold()
-        case let .linesCleared(_, outcome):
+        case let .cleared(_, _, outcome):
             present(outcome)
+        case let .pulsed(_, points):
+            audio.play(.pulse)
+            haptics.pulse()
+            show(Banner(text: localization.string(.gamePulse), accent: .amber,
+                        detail: "+\(points.formatted())"))
+        case .coreCharged:
+            audio.play(.coreCharged)
         case let .levelUp(newLevel):
             audio.play(.levelUp)
             haptics.levelUp()
@@ -256,35 +260,31 @@ final class GameViewModel: ObservableObject {
                         detail: "\(localization.string(.hudLevel)) \(newLevel)"))
         case let .gameOver(reason):
             if lesson == nil { finish(reason: reason) }
-        case .spawned, .softDropped, .rotationFailed, .holdRejected:
+        case .spawned, .softDropped, .rotationFailed, .pulseRejected:
             break
         }
     }
 
     private func present(_ outcome: ClearOutcome) {
-        audio.play(.clear(outcome.lines))
-        if outcome.spin != .none {
-            audio.play(.tSpin)
-            haptics.tSpin()
-        } else if outcome.lines == 4 {
-            haptics.quad()
+        audio.play(.clear(outcome.rings + outcome.arcs))
+        if outcome.chain > 1 {
+            audio.play(.chain)
+            haptics.chain()
+        } else if outcome.rings > 1 {
+            haptics.bigClear()
         }
-        if outcome.perfectClear { audio.play(.perfectClear) }
 
         guard let key = outcome.bannerKey else { return }
         let accent: Banner.BannerAccent
-        switch outcome.spin {
-        case .none: accent = outcome.lines == 4 ? .orange : .amber
-        case .mini, .full: accent = .purple
+        if outcome.chain > 1 {
+            accent = .purple
+        } else {
+            accent = outcome.rings > 0 ? .orange : .amber
         }
 
-        var details = ["+\(outcome.points.formatted())"]
-        if outcome.backToBack { details.append(localization.string(.hudBackToBack)) }
-        if outcome.combo > 0 {
-            details.append("\(localization.string(.hudCombo)) \(outcome.combo)")
-        }
-        show(Banner(text: localization.string(key), accent: accent,
-                    detail: details.joined(separator: " · ")))
+        var text = localization.string(key)
+        if outcome.chain > 1 { text += " ×\(outcome.chain)" }
+        show(Banner(text: text, accent: accent, detail: "+\(outcome.points.formatted())"))
     }
 
     private func show(_ banner: Banner) {
@@ -328,7 +328,7 @@ final class GameViewModel: ObservableObject {
     func rotateCounterClockwise() { engine.rotate(clockwise: false) }
     func softDrop(_ active: Bool) { engine.setSoftDrop(active) }
     func hardDrop() { engine.hardDrop() }
-    func hold() { engine.hold() }
+    func pulse() { engine.pulse() }
 
     // MARK: Saving
 
@@ -352,7 +352,7 @@ final class GameViewModel: ObservableObject {
 
         let beaten = stats.submit(mode: mode,
                                   score: engine.score,
-                                  lines: engine.lines,
+                                  shards: engine.shards,
                                   level: engine.level,
                                   time: engine.elapsed,
                                   reason: reason,
@@ -362,7 +362,7 @@ final class GameViewModel: ObservableObject {
         withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
             result = GameResult(reason: reason,
                                 score: engine.score,
-                                lines: engine.lines,
+                                shards: engine.shards,
                                 level: engine.level,
                                 time: engine.elapsed,
                                 isNewRecord: beaten)
@@ -370,7 +370,7 @@ final class GameViewModel: ObservableObject {
     }
 
     /// Title for the result panel, which differs between a loss, a finished
-    /// Sprint and an expired Ultra clock.
+    /// Target run and an expired Blitz clock.
     func resultTitle(for reason: GameOverReason) -> String {
         switch reason {
         case .topOut: return localization.string(.gameOverTitle)

@@ -110,23 +110,18 @@ struct GameView: View {
 
     // MARK: Board
 
-    /// Sized explicitly rather than with `aspectRatio`, so the well always
-    /// fits the space left over and never pushes anything off screen.
+    /// Sized explicitly rather than with `aspectRatio`, so the round well
+    /// always fits the space left over and never pushes anything off screen.
     private var board: some View {
         GeometryReader { proxy in
-            let ratio = CGFloat(Board.columns) / CGFloat(BoardScene.visibleRows)
-            let width = min(proxy.size.width, proxy.size.height * ratio)
-            let height = width / ratio
+            let side = min(proxy.size.width, proxy.size.height)
 
             ZStack {
                 if let scene {
                     SpriteView(scene: scene, options: [.allowsTransparency])
-                        .frame(width: width, height: height)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .strokeBorder(Color.brandOrange.opacity(0.28), lineWidth: 1.5)
-                        )
+                        .frame(width: side, height: side)
+                        .clipShape(Circle())
+                        .overlay(Circle().strokeBorder(Color.brandOrange.opacity(0.28), lineWidth: 1.5))
                         .shadow(color: .black.opacity(0.35), radius: 18, y: 8)
                 }
 
@@ -271,8 +266,8 @@ private struct OnScreenControls: View {
                           label: loc.string(.controlsRotateCW)) { model.rotateClockwise() }
             ControlButton(symbol: "arrow.down.to.line",
                           label: loc.string(.controlsHardDrop)) { model.hardDrop() }
-            ControlButton(symbol: "tray.and.arrow.down",
-                          label: loc.string(.controlsHold)) { model.hold() }
+            ControlButton(symbol: "dot.radiowaves.left.and.right",
+                          label: loc.string(.controlsPulse)) { model.pulse() }
         }
     }
 }

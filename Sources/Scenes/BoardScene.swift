@@ -1,17 +1,16 @@
 import SpriteKit
 import UIKit
 
-/// Renders the playfield and turns raw touches into engine input. The scene
-/// owns the frame clock: it ticks the engine, then draws whatever the engine
-/// says is true. It never decides any rule itself.
+/// Renders the well and turns raw touches into engine input. The scene owns
+/// the frame clock: it ticks the engine, then draws whatever the engine says
+/// is true. It never decides any rule itself.
+///
+/// The falling shard is always drawn at the top. Moving it sideways turns
+/// the whole well underneath it instead, so the player never has to read a
+/// shard upside down at the bottom of the circle.
 final class BoardScene: SKScene {
 
-    /// Logical units. The view scales this to fit, so the layout is identical
-    /// on every device and nothing has to be recomputed on rotation.
-    static let cellSize: CGFloat = 32
-    static let visibleRows = Board.rows - Board.bufferRows
-    static let boardSize = CGSize(width: cellSize * CGFloat(Board.columns),
-                                  height: cellSize * CGFloat(visibleRows))
+    static let boardSize = WellGeometry.sceneSize
 
     let engine: GameEngine
     var onEvent: ((GameEvent) -> Void)?
@@ -23,44 +22,50 @@ final class BoardScene: SKScene {
     }
 
     private let worldNode = SKNode()
-    private let gridNode = SKSpriteNode()
+    /// Everything that turns with the well: grid, locked cells, ghost, shard.
+    private let wellNode = SKNode()
+    private let gridNode = SKShapeNode()
     private let lockedLayer = SKNode()
     private let ghostLayer = SKNode()
     private let pieceLayer = SKNode()
+    private let coreNode = SKShapeNode(circleOfRadius: WellGeometry.coreRadius - 3)
+    private let chargeNode = SKShapeNode()
     private let effects: EffectsLayer
     private let background: BackgroundLayer
 
-    private var lockedPool: BlockPool!
-    private var ghostPool: BlockPool!
-    private var piecePool: BlockPool!
+    private var lockedPool: CellPool!
+    private var ghostPool: CellPool!
+    private var piecePool: CellPool!
 
     private var lastUpdate: TimeInterval = 0
     private var lockedDirty = true
     private var traits: UITraitCollection
-    /// The piece from the most recent lock, so effects that belong to it can
-    /// still be placed after the engine has moved on.
-    private var lastLocked: Piece?
+    /// The well's on-screen turn, eased towards the engine's aim.
+    private var rotation: CGFloat = 0
+    private var shownCharge = -1.0
 
     // Gesture bookkeeping
     private var touchStart: CGPoint = .zero
     private var touchStartTime: TimeInterval = 0
-    private var lastDragColumn = 0
+    private var lastDragStep = 0
     private var didDrag = false
     private var isSoftDropping = false
 
-    private let deadZone = cellSize * 0.28
-    private let hardDropVelocity: CGFloat = cellSize * 26
+    private let dragStep: CGFloat = 26
+    private let deadZone: CGFloat = 9
+    private let dropVelocity: CGFloat = 820
 
     init(engine: GameEngine, traits: UITraitCollection) {
         self.engine = engine
         self.traits = traits
-        self.effects = EffectsLayer(cellSize: Self.cellSize, boardSize: Self.boardSize)
+        self.effects = EffectsLayer(boardSize: Self.boardSize)
         self.background = BackgroundLayer(boardSize: Self.boardSize, traits: traits)
         super.init(size: Self.boardSize)
 
         scaleMode = .aspectFit
         anchorPoint = .zero
         backgroundColor = .clear
+        rotation = WellGeometry.rotation(bringingToTop: Double(engine.aim))
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
@@ -69,21 +74,28 @@ final class BoardScene: SKScene {
         guard worldNode.parent == nil else { return }
         addChild(worldNode)
 
-        gridNode.anchorPoint = .zero
+        wellNode.position = WellGeometry.centre
         gridNode.zPosition = -5
-
-        lockedLayer.zPosition = 1
         ghostLayer.zPosition = 0
+        lockedLayer.zPosition = 1
         pieceLayer.zPosition = 2
+        coreNode.position = WellGeometry.centre
+        coreNode.zPosition = 3
+        chargeNode.position = WellGeometry.centre
+        chargeNode.zPosition = 4
+        chargeNode.lineCap = .round
         effects.zPosition = 10
 
-        for node in [background, gridNode, ghostLayer, lockedLayer, pieceLayer, effects] as [SKNode] {
+        for node in [gridNode, ghostLayer, lockedLayer, pieceLayer] as [SKNode] {
+            wellNode.addChild(node)
+        }
+        for node in [background, wellNode, coreNode, chargeNode, effects] as [SKNode] {
             worldNode.addChild(node)
         }
 
-        lockedPool = BlockPool(parent: lockedLayer, cellSize: Self.cellSize)
-        ghostPool = BlockPool(parent: ghostLayer, cellSize: Self.cellSize)
-        piecePool = BlockPool(parent: pieceLayer, cellSize: Self.cellSize)
+        lockedPool = CellPool(parent: lockedLayer)
+        ghostPool = CellPool(parent: ghostLayer)
+        piecePool = CellPool(parent: pieceLayer)
 
         applyTraits(traits)
     }
@@ -92,27 +104,19 @@ final class BoardScene: SKScene {
 
     func applyTraits(_ traits: UITraitCollection) {
         self.traits = traits
-        BlockTextureFactory.invalidate()
-        gridNode.texture = BoardScene.gridTexture(traits: traits)
-        gridNode.size = Self.boardSize
+        gridNode.path = BoardScene.gridPath()
+        gridNode.strokeColor = uiColor("GridLine")
+        gridNode.lineWidth = 1
+        coreNode.fillColor = uiColor("BgElevated")
+        coreNode.strokeColor = uiColor("BrandOrange").withAlphaComponent(0.5)
+        coreNode.lineWidth = 2
         background.applyTraits(traits)
         lockedDirty = true
+        shownCharge = -1
 
         // Recolour rather than rebuild, so a theme switch never interrupts play.
         worldNode.alpha = 0.85
         worldNode.run(.fadeAlpha(to: 1, duration: 0.25))
-    }
-
-    // MARK: Coordinates
-
-    private func position(column x: Int, row y: Int) -> CGPoint {
-        let visibleRow = y - Board.bufferRows
-        return CGPoint(x: (CGFloat(x) + 0.5) * Self.cellSize,
-                       y: Self.boardSize.height - (CGFloat(visibleRow) + 0.5) * Self.cellSize)
-    }
-
-    private func rowCentreY(_ y: Int) -> CGFloat {
-        position(column: 0, row: y).y
     }
 
     // MARK: Frame loop
@@ -125,7 +129,7 @@ final class BoardScene: SKScene {
             delta = elapsed
         } else {
             // Clamp so a stall (backgrounding, a long frame) never teleports
-            // the piece down the board.
+            // the shard into the core.
             elapsed = max(0, currentTime - lastUpdate)
             delta = min(elapsed, 1.0 / 20.0)
         }
@@ -140,31 +144,40 @@ final class BoardScene: SKScene {
             onEvent?(event)
         }
 
+        turnWell(deltaTime: delta)
         renderActivePiece()
         if lockedDirty {
-            renderLockedBlocks()
+            renderLockedCells()
             lockedDirty = false
         }
+        renderCharge(time: currentTime)
         onFrame?()
+    }
+
+    /// Eases the well round so the shard's sector sits at the top.
+    private func turnWell(deltaTime: TimeInterval) {
+        let sector = engine.current?.centreSector ?? Double(engine.aim)
+        let target = WellGeometry.rotation(bringingToTop: sector)
+        let turn = WellGeometry.shortestTurn(from: rotation, to: target)
+        let ease = reduceMotion ? 1 : 1 - CGFloat(exp(-deltaTime * 22))
+        rotation += abs(turn) < 0.002 ? turn : turn * ease
+        wellNode.zRotation = rotation
     }
 
     // MARK: Rendering
 
-    private func renderLockedBlocks() {
+    private func renderLockedCells() {
         lockedPool.recycleAll()
-        let clearing = Set(engine.pendingClearRows)
+        let clearing = Set(engine.pendingClear)
 
-        for y in Board.bufferRows..<Board.rows {
-            for x in 0..<Board.columns {
-                guard let type = engine.board[x, y] else { continue }
+        for y in Board.bufferRings..<Board.rings {
+            for x in 0..<Board.sectors {
+                guard let color = engine.board[x, y] else { continue }
+                let cell = Point(x: x, y: y)
+                let base = uiColor(color.colorName)
                 let node = lockedPool.obtain()
-                node.configure(type: type, cellSize: Self.cellSize, style: .solid,
-                               glyph: colorBlindMode, traits: traits)
-                node.position = position(column: x, row: y)
-                if clearing.contains(y) {
-                    node.colorBlendFactor = 0.7
-                    node.color = .white
-                }
+                node.configure(cell: cell, color: base, style: .solid, glyph: glyph(color))
+                if clearing.contains(cell) { node.highlight(base) }
             }
         }
     }
@@ -174,134 +187,135 @@ final class BoardScene: SKScene {
         ghostPool.recycleAll()
 
         if let ghost = engine.ghost {
-            for cell in ghost.cells where cell.y >= Board.bufferRows {
-                let node = ghostPool.obtain()
-                node.configure(type: ghost.type, cellSize: Self.cellSize, style: .ghost,
-                               glyph: false, traits: traits)
-                node.position = position(column: cell.x, row: cell.y)
+            for cell in ghost.cells where cell.y >= Board.bufferRings {
+                ghostPool.obtain().configure(cell: cell, color: uiColor(ghost.color.colorName),
+                                             style: .ghost, glyph: nil)
             }
         }
 
         guard let piece = engine.current else { return }
-        for cell in piece.cells where cell.y >= Board.bufferRows {
-            let node = piecePool.obtain()
-            node.configure(type: piece.type, cellSize: Self.cellSize, style: .solid,
-                           glyph: colorBlindMode, traits: traits)
-            node.position = position(column: cell.x, row: cell.y)
+        for cell in piece.cells where cell.y >= Board.bufferRings {
+            piecePool.obtain().configure(cell: cell, color: uiColor(piece.color.colorName),
+                                         style: .solid, glyph: glyph(piece.color))
         }
+    }
+
+    /// Draws the pulse charge as an arc round the core, glowing once full.
+    private func renderCharge(time: TimeInterval) {
+        let fraction = engine.chargeFraction
+        let full = fraction >= 1
+        if fraction != shownCharge {
+            shownCharge = fraction
+            let path = CGMutablePath()
+            if fraction > 0 {
+                path.addArc(center: .zero, radius: WellGeometry.coreRadius - 10,
+                            startAngle: .pi / 2, endAngle: .pi / 2 - CGFloat(fraction) * 2 * .pi,
+                            clockwise: true)
+            }
+            chargeNode.path = path
+            chargeNode.strokeColor = uiColor(full ? "BrandAmber" : "BrandOrange")
+            chargeNode.lineWidth = 6
+        }
+        guard full, !reduceMotion else {
+            chargeNode.glowWidth = 0
+            coreNode.glowWidth = 0
+            return
+        }
+        let breathing = CGFloat(0.5 + 0.5 * sin(time * 5))
+        chargeNode.glowWidth = 2 + 4 * breathing
+        coreNode.glowWidth = 3 * breathing
+    }
+
+    private func glyph(_ color: ShardColor) -> String? {
+        colorBlindMode ? color.accessibilityGlyph : nil
     }
 
     // MARK: Reacting to engine events
 
     private func handle(_ event: GameEvent) {
         switch event {
-        case let .rotated(kicked):
-            bumpPiece(scale: 1.06)
-            if kicked, let piece = engine.current {
-                let edge = piece.cells.map(\.x).min() ?? 0
-                effects.wallSpark(at: position(column: edge, row: piece.cells[0].y),
-                                  color: uiColor("BrandAmber"))
-            }
+        case let .hardDropped(rings, from, piece):
+            guard rings > 0 else { break }
+            let top = WellGeometry.centre.y + WellGeometry.midRadius(depth: max(from, Board.bufferRings))
+            let bottom = WellGeometry.centre.y + WellGeometry.midRadius(depth: piece.origin.y)
+            effects.dropTrail(centreX: WellGeometry.centre.x, width: 30,
+                              fromY: top, toY: bottom, color: uiColor(piece.color.colorName))
+            shake(by: 2)
 
-        case let .hardDropped(rows, fromY, piece):
-            guard rows > 0 else { break }
-            let xs = piece.cells.map(\.x)
-            let minX = xs.min() ?? 0
-            let width = (xs.max() ?? 0) - minX + 1
-            effects.hardDropTrail(column: minX, width: width,
-                                  fromY: rowCentreY(max(fromY, Board.bufferRows)),
-                                  toY: rowCentreY(piece.cells.map(\.y).max() ?? 0),
-                                  color: uiColor(piece.type.colorName))
-            squashPiece()
-
-        case let .locked(piece):
-            lastLocked = piece
+        case .locked:
             lockedDirty = true
-            effects.flash(color: .white, intensity: 0.22, duration: 0.1)
+            effects.flash(color: .white, intensity: 0.18, duration: 0.1)
 
-        case let .linesCleared(rows, outcome):
+        case let .cleared(cells, colors, outcome):
             lockedDirty = true
-            presentClear(rows: rows, outcome: outcome)
+            presentClear(cells: cells, colors: colors, outcome: outcome)
+
+        case let .pulsed(cells, _):
+            lockedDirty = true
+            effects.burst(at: cells.map { WellGeometry.position(of: $0, rotation: rotation) },
+                          colors: cells.map { _ in uiColor("BrandAmber") },
+                          centre: WellGeometry.centre, big: true)
+            effects.pulseWave(at: WellGeometry.centre, radius: WellGeometry.coreRadius,
+                              color: uiColor("BrandAmber"))
+            effects.flash(color: uiColor("BrandAmber"), intensity: 0.4, duration: 0.4)
+            shake(by: 6)
 
         case .levelUp:
             background.pulseWarmth()
             effects.flash(color: uiColor("BrandAmber"), intensity: 0.3, duration: 0.5)
 
-        case .spawned, .holdSwapped:
+        case .coreCharged:
+            effects.chainRing(at: WellGeometry.centre, radius: WellGeometry.coreRadius,
+                              color: uiColor("BrandAmber"))
+
+        case .spawned:
             lockedDirty = true
 
         case .gameOver:
             // Drawn here rather than left to the flag below: rendering
             // recycles the nodes, which would cancel the collapse that is
             // about to run on them.
-            renderLockedBlocks()
+            renderLockedCells()
             lockedDirty = false
             playGameOverCollapse()
 
-        case .moved, .softDropped, .rotationFailed, .holdRejected:
+        case .moved, .rotated, .softDropped, .rotationFailed, .pulseRejected:
             break
         }
     }
 
-    private func presentClear(rows: [Int], outcome: ClearOutcome) {
-        let colors = rows.map { y in
-            (0..<Board.columns).map { x in
-                uiColor(engine.board[x, y]?.colorName ?? "BrandOrange")
-            }
-        }
-        effects.lineClear(rows: rows.map(rowCentreY), colors: colors,
-                          isQuad: outcome.lines == 4)
+    private func presentClear(cells: [Point], colors: [ShardColor], outcome: ClearOutcome) {
+        effects.burst(at: cells.map { WellGeometry.position(of: $0, rotation: rotation) },
+                      colors: colors.map { uiColor($0.colorName) },
+                      centre: WellGeometry.centre, big: outcome.rings > 1 || outcome.chain > 1)
 
-        if outcome.lines == 4 {
-            effects.flash(color: uiColor("BrandOrange"), intensity: 0.45, duration: 0.35)
-            shake(by: 6)
+        let closed = Set(cells.map(\.y)).filter { y in cells.filter { $0.y == y }.count == Board.sectors }
+        for y in closed {
+            effects.ringFlare(radius: WellGeometry.midRadius(depth: y),
+                              width: WellGeometry.outerRadius(depth: y) - WellGeometry.innerRadius(depth: y),
+                              centre: WellGeometry.centre, color: .white)
+        }
+
+        if outcome.chain > 1 {
+            effects.chainRing(at: WellGeometry.centre, radius: WellGeometry.coreRadius,
+                              color: uiColor("PieceT"))
+            shake(by: 4 + CGFloat(min(outcome.chain, 4)))
         } else {
-            shake(by: 2)
-        }
-
-        // The spin belongs to the piece that just locked, which the engine has
-        // already let go of, so the ring is centred on the remembered one.
-        if outcome.spin != .none, let piece = lastLocked {
-            effects.spinRing(at: position(column: piece.origin.x + 1, row: piece.origin.y + 1),
-                             color: uiColor("PieceT"))
-        }
-
-        if outcome.perfectClear {
-            effects.perfectClearSweep(color: uiColor("BrandAmber"))
+            shake(by: outcome.rings > 1 ? 5 : 2)
         }
     }
 
     private func playGameOverCollapse() {
         guard !reduceMotion else { return }
-        for (index, node) in lockedLayer.children.enumerated() where !node.isHidden {
-            let delay = Double(index % Board.columns) * 0.012
-                + Double(index / Board.columns) * 0.03
+        for (index, node) in lockedPool.active.enumerated() {
             node.run(.sequence([
-                .wait(forDuration: delay),
-                .group([.colorize(with: .black, colorBlendFactor: 0.75, duration: 0.25),
-                        .fadeAlpha(to: 0.35, duration: 0.25)])
+                .wait(forDuration: Double(index % Board.sectors) * 0.015),
+                .fadeAlpha(to: 0.3, duration: 0.25)
             ]))
         }
     }
 
     // MARK: Small motion helpers
-
-    private func bumpPiece(scale: CGFloat) {
-        guard !reduceMotion else { return }
-        pieceLayer.removeAllActions()
-        pieceLayer.setScale(1)
-        pieceLayer.run(.sequence([.scale(to: scale, duration: 0.05),
-                                  .scale(to: 1, duration: 0.07)]))
-    }
-
-    private func squashPiece() {
-        guard !reduceMotion else { return }
-        pieceLayer.removeAllActions()
-        pieceLayer.yScale = 1
-        pieceLayer.run(.sequence([.scaleY(to: 0.88, duration: 0.04),
-                                  .scaleY(to: 1, duration: 0.09)]))
-        shake(by: 2)
-    }
 
     private func shake(by amount: CGFloat) {
         guard !reduceMotion else { return }
@@ -327,7 +341,7 @@ final class BoardScene: SKScene {
         guard let touch = touches.first else { return }
         touchStart = touch.location(in: self)
         touchStartTime = touch.timestamp
-        lastDragColumn = 0
+        lastDragStep = 0
         didDrag = false
     }
 
@@ -338,11 +352,11 @@ final class BoardScene: SKScene {
         let dy = point.y - touchStart.y
 
         if abs(dx) > abs(dy) {
-            let columns = Int((dx / Self.cellSize).rounded(.towardZero))
-            if columns != lastDragColumn {
-                let steps = columns - lastDragColumn
-                for _ in 0..<abs(steps) { engine.move(dx: steps > 0 ? 1 : -1) }
-                lastDragColumn = columns
+            let steps = Int((dx / dragStep).rounded(.towardZero))
+            if steps != lastDragStep {
+                let delta = steps - lastDragStep
+                for _ in 0..<abs(delta) { engine.move(dx: delta > 0 ? 1 : -1) }
+                lastDragStep = steps
                 didDrag = true
             }
             if isSoftDropping {
@@ -371,17 +385,20 @@ final class BoardScene: SKScene {
         }
 
         let verticalSpeed = CGFloat(abs(dy)) / CGFloat(elapsed)
-
-        if dy < -deadZone, verticalSpeed > hardDropVelocity, abs(dy) > abs(dx) {
+        if dy < -deadZone, verticalSpeed > dropVelocity, abs(dy) > abs(dx) {
             engine.hardDrop()
             return
         }
         if dy > deadZone * 2, abs(dy) > abs(dx) {
-            engine.hold()
+            engine.pulse()
             return
         }
-        if !didDrag, abs(dx) < deadZone, abs(dy) < deadZone {
-            engine.rotate(clockwise: point.x > Self.boardSize.width / 2)
+        guard !didDrag, abs(dx) < deadZone, abs(dy) < deadZone else { return }
+        let fromCentre = hypot(point.x - WellGeometry.centre.x, point.y - WellGeometry.centre.y)
+        if fromCentre < WellGeometry.coreRadius + 6 {
+            engine.pulse()
+        } else {
+            engine.rotate(clockwise: point.x > WellGeometry.centre.x)
         }
     }
 
@@ -394,27 +411,22 @@ final class BoardScene: SKScene {
 
     // MARK: Grid
 
-    private static func gridTexture(traits: UITraitCollection) -> SKTexture {
-        let size = boardSize
-        let line = UIColor(named: "GridLine", in: .main, compatibleWith: traits)
-            ?? UIColor.white.withAlphaComponent(0.06)
-
-        let image = UIGraphicsImageRenderer(size: size).image { ctx in
-            let cg = ctx.cgContext
-            cg.setStrokeColor(line.cgColor)
-            cg.setLineWidth(1)
-            for column in 0...Board.columns {
-                let x = CGFloat(column) * cellSize
-                cg.move(to: CGPoint(x: x, y: 0))
-                cg.addLine(to: CGPoint(x: x, y: size.height))
-            }
-            for row in 0...visibleRows {
-                let y = CGFloat(row) * cellSize
-                cg.move(to: CGPoint(x: 0, y: y))
-                cg.addLine(to: CGPoint(x: size.width, y: y))
-            }
-            cg.strokePath()
+    /// Ring circles and sector spokes, in well space.
+    private static func gridPath() -> CGPath {
+        let path = CGMutablePath()
+        for y in Board.bufferRings..<Board.rings {
+            path.addEllipse(in: CGRect(x: -WellGeometry.outerRadius(depth: y),
+                                       y: -WellGeometry.outerRadius(depth: y),
+                                       width: WellGeometry.outerRadius(depth: y) * 2,
+                                       height: WellGeometry.outerRadius(depth: y) * 2))
         }
-        return SKTexture(image: image)
+        for x in 0..<Board.sectors {
+            let theta = WellGeometry.angle(sector: CGFloat(x)) + WellGeometry.sectorAngle / 2
+            path.move(to: CGPoint(x: WellGeometry.coreRadius * cos(theta),
+                                  y: WellGeometry.coreRadius * sin(theta)))
+            path.addLine(to: CGPoint(x: WellGeometry.rimRadius * cos(theta),
+                                     y: WellGeometry.rimRadius * sin(theta)))
+        }
+        return path
     }
 }

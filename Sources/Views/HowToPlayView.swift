@@ -9,7 +9,7 @@ struct HowToPlayView: View {
         ("arrow.clockwise", .howToControlsRotate),
         ("arrow.down", .howToControlsSoft),
         ("arrow.down.to.line", .howToControlsHard),
-        ("arrow.up", .howToControlsHold)
+        ("dot.radiowaves.left.and.right", .howToControlsPulse)
     ]
 
     var body: some View {
@@ -41,8 +41,9 @@ struct HowToPlayView: View {
 
     private var pieceGallery: some View {
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 42))], spacing: 10) {
-            ForEach(TetrominoType.allCases, id: \.self) { type in
-                PieceThumbnail(type: type, cellSize: 10)
+            ForEach(Shard.all.filter { $0.color.rawValue == $0.shape.rawValue % ShardColor.allCases.count },
+                    id: \.self) { shard in
+                PieceThumbnail(shard: shard, cellSize: 12)
                     .frame(height: 26)
             }
         }

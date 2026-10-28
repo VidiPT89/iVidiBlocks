@@ -103,7 +103,7 @@ struct StatsView: View {
     private func secondaryText(for mode: GameMode, record: ModeRecord) -> String {
         switch mode.scoring {
         case .highestScore:
-            return "\(loc.string(.hudLines)) \(record.lines) · \(loc.string(.hudLevel)) \(record.level)"
+            return "\(loc.string(.hudShards)) \(record.shards) · \(loc.string(.hudLevel)) \(record.level)"
         case .fastestTime:
             return "\(loc.string(.hudScore)) \(record.score.formatted())"
         }
@@ -117,16 +117,18 @@ struct StatsView: View {
                         value: stats.lifetime.gamesPlayed.formatted())
                 StatRow(label: loc.string(.statsPieces),
                         value: stats.lifetime.piecesPlaced.formatted())
-                StatRow(label: loc.string(.statsLines),
-                        value: stats.lifetime.linesCleared.formatted())
-                StatRow(label: loc.string(.statsQuads),
-                        value: stats.lifetime.quads.formatted(),
+                StatRow(label: loc.string(.statsShards),
+                        value: stats.lifetime.shardsCleared.formatted())
+                StatRow(label: loc.string(.statsRings),
+                        value: stats.lifetime.ringsCleared.formatted(),
                         highlighted: true)
-                StatRow(label: loc.string(.statsTSpins),
-                        value: stats.lifetime.tSpins.formatted(),
+                StatRow(label: loc.string(.statsArcs),
+                        value: stats.lifetime.arcsFused.formatted(),
                         highlighted: true)
-                StatRow(label: loc.string(.statsBestCombo),
-                        value: stats.lifetime.bestCombo.formatted(),
+                StatRow(label: loc.string(.statsPulses),
+                        value: stats.lifetime.pulses.formatted())
+                StatRow(label: loc.string(.statsBestChain),
+                        value: stats.lifetime.bestChain.formatted(),
                         highlighted: true)
                 StatRow(label: loc.string(.statsTimePlayed),
                         value: TimeFormat.duration(stats.lifetime.timePlayed))

@@ -1,102 +1,60 @@
 import Foundation
 
-/// Everything that happened when a piece locked, used both for scoring and
-/// for deciding which banner and effect to play.
+/// Everything one clearing step removed, used both for scoring and for
+/// deciding which banner and effect to play.
 struct ClearOutcome: Equatable {
-    var lines: Int
-    var spin: SpinKind
-    var perfectClear: Bool
-    var backToBack: Bool
-    var combo: Int
+    var cells: Int
+    var rings: Int
+    var arcs: Int
+    /// 1 for the clear a lock caused directly, 2 for the cascade it set off
+    /// once the outer cells slid inwards, and so on.
+    var chain: Int
     var points: Int
 
     var bannerKey: LocKey? {
-        if perfectClear { return .gamePerfectClear }
-        switch spin {
-        case .full: return .gameTSpin
-        case .mini: return .gameTSpinMini
-        case .none: break
-        }
-        switch lines {
-        case 4: return .gameQuad
-        case 3: return .gameTriple
-        case 2: return .gameDouble
-        case 1: return .gameSingle
-        default: return nil
-        }
+        if chain > 1 { return .gameChain }
+        if rings > 1 { return .gameRings }
+        if rings == 1 { return .gameRing }
+        if arcs > 0 { return .gameArc }
+        return nil
     }
 }
 
 enum ScoreCalculator {
 
-    /// Base value of a clear before the level multiplier and B2B bonus.
-    static func baseValue(lines: Int, spin: SpinKind, perfectClear: Bool) -> Int {
-        if perfectClear {
-            switch lines {
-            case 1: return 800
-            case 2: return 1200
-            case 3: return 1800
-            case 4: return 2000
-            default: break
-            }
-        }
+    static let pointsPerCell = 10
+    static let pointsPerRing = 100
+    static let pointsPerArc = 60
+    static let pointsPerPulsedCell = 5
 
-        switch spin {
-        case .full:
-            switch lines {
-            case 0: return 400
-            case 1: return 800
-            case 2: return 1200
-            case 3: return 1600
-            default: return 0
-            }
-        case .mini:
-            switch lines {
-            case 0: return 100
-            case 1: return 200
-            default: return 0
-            }
-        case .none:
-            switch lines {
-            case 1: return 100
-            case 2: return 300
-            case 3: return 500
-            case 4: return 800
-            default: return 0
-            }
-        }
+    /// Score for one clearing step. Every link of a chain multiplies the
+    /// whole step, which is what makes setting up cascades worth the risk.
+    static func points(cells: Int, rings: Int, arcs: Int, chain: Int, level: Int) -> Int {
+        let base = cells * pointsPerCell + rings * pointsPerRing + arcs * pointsPerArc
+        return base * max(chain, 1) * max(level, 1)
     }
 
-    /// Full score for one locked piece, including the back-to-back
-    /// multiplier and the combo bonus.
-    static func points(lines: Int,
-                       spin: SpinKind,
-                       perfectClear: Bool,
-                       level: Int,
-                       backToBack: Bool,
-                       combo: Int) -> Int {
-        var total = Double(baseValue(lines: lines, spin: spin, perfectClear: perfectClear))
-        if backToBack { total *= 1.5 }
-        var points = Int(total) * max(level, 1)
-        if combo > 0 && lines > 0 {
-            points += 50 * combo * max(level, 1)
-        }
-        return points
+    /// A pulse pays a little for what it removes, so it rescues a run
+    /// rather than farming points.
+    static func pulsePoints(cells: Int, level: Int) -> Int {
+        cells * pointsPerPulsedCell * max(level, 1)
     }
 
-    static func softDropPoints(rows: Int) -> Int { rows }
-    static func hardDropPoints(rows: Int) -> Int { rows * 2 }
+    static func softDropPoints(rings: Int) -> Int { rings }
+    static func hardDropPoints(rings: Int) -> Int { rings * 2 }
 
-    /// Seconds a piece takes to fall one row at a given level. Levels are
+    /// Seconds a shard takes to fall one ring at a given level. Levels are
     /// capped at 20 so the game stays humanly playable.
     static func gravityInterval(level: Int) -> TimeInterval {
         let capped = min(max(level, 1), 20)
         let n = Double(capped - 1)
-        return pow(0.8 - n * 0.007, n)
+        return 0.9 * pow(0.8 - n * 0.007, n)
     }
 
-    /// Marathon gains a level every ten lines.
-    static func level(forTotalLines lines: Int, startingAt start: Int = 1) -> Int {
-        start + lines / 10
+    /// Cleared cells needed for each level in Orbit.
+    static let shardsPerLevel = 48
+
+    static func level(forTotalShards shards: Int, startingAt start: Int = 1) -> Int {
+        start + shards / shardsPerLevel
     }
 }

@@ -1,8 +1,8 @@
 import XCTest
 @testable import iVidiBlocks
 
-/// Every drill has to be winnable with the pieces it deals, by the moves its
-/// hint describes, and has to end once those pieces are spent.
+/// Every drill has to be winnable with the shards it deals, by the moves its
+/// hint describes, and has to end once those shards are spent.
 final class LessonTests: XCTestCase {
 
     private func lesson(_ id: String) throws -> Lesson {
@@ -10,9 +10,10 @@ final class LessonTests: XCTestCase {
     }
 
     private func start(_ lesson: Lesson) -> GameEngine {
-        let engine = GameEngine(mode: .marathon,
+        let engine = GameEngine(mode: .orbit,
                                 random: LessonPieces(order: lesson.pieces),
-                                board: lesson.board)
+                                board: lesson.board,
+                                charge: lesson.charged ? GameEngine.pulseCost : 0)
         engine.startImmediately()
         return engine
     }
@@ -29,27 +30,29 @@ final class LessonTests: XCTestCase {
 
     private func feed(_ engine: GameEngine, _ tracker: inout LessonTracker) {
         for event in engine.drainEvents() { tracker.observe(event) }
-        tracker.settle()
+        tracker.settle(cascading: engine.phase == .clearing)
     }
 
-    private func slide(_ engine: GameEngine, _ direction: Int) {
-        while engine.move(dx: direction) {}
+    private func turn(_ engine: GameEngine, by sectors: Int) {
+        for _ in 0..<abs(sectors) { engine.move(dx: sectors > 0 ? 1 : -1) }
     }
 
-    // MARK: Solvable
+    // MARK: Shape of the drills
 
-    func testEveryLessonHasAFullTenColumnBoardAndPieces() {
+    func testEveryLessonHasWholeRingsAndStartsWithNothingToClear() {
         XCTAssertEqual(Set(Lesson.all.map(\.id)).count, Lesson.all.count)
         for lesson in Lesson.all {
             XCTAssertFalse(lesson.pieces.isEmpty, lesson.id)
-            XCTAssertTrue(lesson.rows.allSatisfy { $0.count == Board.columns }, lesson.id)
-            XCTAssertTrue(lesson.board.completedRows().isEmpty, "\(lesson.id) starts with a full row")
+            XCTAssertTrue(lesson.rings.allSatisfy { $0.count == Board.sectors }, lesson.id)
+            XCTAssertTrue(lesson.board.scan().isEmpty, "\(lesson.id) starts with something to clear")
         }
         XCTAssertNil(Lesson.all.last?.next)
         XCTAssertEqual(Lesson.all.first?.next, Lesson.all[1])
     }
 
-    func testHardDropLesson() throws {
+    // MARK: Solvable, by the moves the hints describe
+
+    func testDropLesson() throws {
         let lesson = try lesson("drop")
         let engine = start(lesson)
         var tracker = LessonTracker(lesson: lesson)
@@ -58,22 +61,11 @@ final class LessonTests: XCTestCase {
         XCTAssertEqual(tracker.outcome, .passed)
     }
 
-    func testRotateLesson() throws {
-        let lesson = try lesson("rotate")
-        let engine = start(lesson)
-        var tracker = LessonTracker(lesson: lesson)
-        engine.rotate(clockwise: true)
-        slide(engine, 1)
-        engine.hardDrop()
-        feed(engine, &tracker)
-        XCTAssertEqual(tracker.outcome, .passed)
-    }
-
-    func testHoldLessonPassesOnlyWithHold() throws {
-        let lesson = try lesson("hold")
+    func testSpinLessonNeedsTheWellTurned() throws {
+        let lesson = try lesson("spin")
         var engine = start(lesson)
         var tracker = LessonTracker(lesson: lesson)
-        engine.hold()
+        turn(engine, by: 8)
         engine.hardDrop()
         feed(engine, &tracker)
         XCTAssertEqual(tracker.outcome, .passed)
@@ -82,84 +74,75 @@ final class LessonTests: XCTestCase {
         tracker = LessonTracker(lesson: lesson)
         engine.hardDrop()
         feed(engine, &tracker)
-        XCTAssertEqual(tracker.outcome, .inProgress)
-        engine.hardDrop()
-        feed(engine, &tracker)
-        XCTAssertEqual(tracker.outcome, .failed, "both pieces spent without holding")
+        XCTAssertEqual(tracker.outcome, .failed, "dropped without turning, the shard sits on the ring")
     }
 
-    func testQuadLesson() throws {
-        let lesson = try lesson("quad")
+    func testRotateLessonClosesTwoRings() throws {
+        let lesson = try lesson("rotate")
         let engine = start(lesson)
         var tracker = LessonTracker(lesson: lesson)
         engine.rotate(clockwise: true)
-        slide(engine, -1)
+        turn(engine, by: 4)
         engine.hardDrop()
+        let events = engine.drainEvents()
+        for event in events { tracker.observe(event) }
+        XCTAssertEqual(tracker.outcome, .passed)
+        XCTAssertTrue(events.contains { if case let .cleared(_, _, o) = $0 { return o.rings == 2 }; return false })
+    }
+
+    func testArcLessonFusesWithoutClosingTheRing() throws {
+        let lesson = try lesson("arc")
+        let engine = start(lesson)
+        var tracker = LessonTracker(lesson: lesson)
+        engine.hardDrop()
+        let events = engine.drainEvents()
+        for event in events { tracker.observe(event) }
+        XCTAssertEqual(tracker.outcome, .passed)
+        XCTAssertTrue(events.contains { if case let .cleared(_, _, o) = $0 { return o.arcs == 1 && o.rings == 0 }; return false })
+    }
+
+    func testChainLessonWaitsForTheCascadeBeforeJudging() throws {
+        let lesson = try lesson("chain")
+        let engine = start(lesson)
+        var tracker = LessonTracker(lesson: lesson)
+        engine.hardDrop()
+        feed(engine, &tracker)
+        XCTAssertEqual(tracker.outcome, .inProgress, "the only shard is spent, but the cascade is still to come")
+        advance(engine, &tracker, by: GameEngine.clearDuration + 0.1)
+        XCTAssertEqual(tracker.outcome, .passed)
+    }
+
+    func testPulseLesson() throws {
+        let lesson = try lesson("pulse")
+        let engine = start(lesson)
+        var tracker = LessonTracker(lesson: lesson)
+        XCTAssertTrue(engine.canPulse)
+        engine.pulse()
         feed(engine, &tracker)
         XCTAssertEqual(tracker.outcome, .passed)
     }
 
-    func testTSpinLessonNeedsTheSpin() throws {
-        let lesson = try lesson("tspin")
+    // MARK: Ending
+
+    func testRunningOutOfShardsFailsTheAttempt() throws {
+        let lesson = try lesson("arc")
         let engine = start(lesson)
         var tracker = LessonTracker(lesson: lesson)
-        engine.rotate(clockwise: false)
-        for _ in 0..<Board.rows { engine.softDropStep() }
-        engine.rotate(clockwise: false)
-        advance(engine, &tracker, by: GameEngine.lockDelay + 0.1)
-        XCTAssertEqual(tracker.outcome, .passed)
-
-        let dropped = start(lesson)
-        var missed = LessonTracker(lesson: lesson)
-        dropped.rotate(clockwise: false)
-        dropped.hardDrop()
-        feed(dropped, &missed)
-        XCTAssertEqual(missed.outcome, .failed, "a plain drop is not a T-spin")
-    }
-
-    func testComboLesson() throws {
-        let lesson = try lesson("combo")
-        let engine = start(lesson)
-        var tracker = LessonTracker(lesson: lesson)
-        for _ in lesson.pieces {
-            slide(engine, -1)
-            engine.hardDrop()
-            feed(engine, &tracker)
-            advance(engine, &tracker, by: GameEngine.clearDuration + 0.05)
-        }
-        XCTAssertEqual(tracker.outcome, .passed)
-    }
-
-    func testBackToBackLesson() throws {
-        let lesson = try lesson("b2b")
-        let engine = start(lesson)
-        var tracker = LessonTracker(lesson: lesson)
-        for _ in lesson.pieces {
-            engine.rotate(clockwise: true)
-            slide(engine, 1)
-            engine.hardDrop()
-            feed(engine, &tracker)
-            advance(engine, &tracker, by: GameEngine.clearDuration + 0.05)
-        }
-        XCTAssertEqual(tracker.outcome, .passed)
-    }
-
-    // MARK: Tracker
-
-    func testAClearOnTheLastPieceCountsBeforeRunningOut() throws {
-        var tracker = LessonTracker(lesson: try lesson("drop"))
-        tracker.observe(.locked(piece: Piece(type: .i, origin: Point(x: 3, y: 20))))
-        tracker.observe(.linesCleared(rows: [21], outcome: ClearOutcome(
-            lines: 1, spin: .none, perfectClear: false, backToBack: false, combo: 0, points: 100)))
-        tracker.settle()
-        XCTAssertEqual(tracker.outcome, .passed)
+        turn(engine, by: 6)
+        engine.hardDrop()
+        feed(engine, &tracker)
+        XCTAssertEqual(tracker.outcome, .failed)
     }
 
     func testAVerdictIsFinal() throws {
-        var tracker = LessonTracker(lesson: try lesson("drop"))
+        let lesson = try lesson("drop")
+        let engine = start(lesson)
+        var tracker = LessonTracker(lesson: lesson)
+        engine.hardDrop()
+        feed(engine, &tracker)
+        XCTAssertEqual(tracker.outcome, .passed)
         tracker.observe(.gameOver(reason: .topOut))
-        tracker.observe(.linesCleared(rows: [21], outcome: ClearOutcome(
-            lines: 1, spin: .none, perfectClear: false, backToBack: false, combo: 0, points: 100)))
-        XCTAssertEqual(tracker.outcome, .failed)
+        tracker.settle(cascading: false)
+        XCTAssertEqual(tracker.outcome, .passed)
     }
 }

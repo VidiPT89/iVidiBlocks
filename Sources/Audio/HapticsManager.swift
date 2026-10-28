@@ -42,7 +42,7 @@ final class HapticsManager: ObservableObject {
     func rotate() { tap(light) }
     func lock() { tap(rigid) }
     func hardDrop() { tap(heavy) }
-    func hold() { tap(light) }
+    func pulse() { tap(heavy) }
 
     func gameOver() {
         guard enabled else { return }
@@ -54,8 +54,8 @@ final class HapticsManager: ObservableObject {
         notification.notificationOccurred(.success)
     }
 
-    /// Four quick hits, one per cleared line.
-    func quad() {
+    /// Four quick hits, for a clear of two rings or more.
+    func bigClear() {
         guard enabled else { return }
         let hits = (0..<4).map { index in
             CHHapticEvent(eventType: .hapticTransient,
@@ -68,8 +68,8 @@ final class HapticsManager: ObservableObject {
         if !playPattern(events: hits) { tap(heavy) }
     }
 
-    /// A short rising swell, for landing a T-spin.
-    func tSpin() {
+    /// A short rising swell, for a cascade.
+    func chain() {
         guard enabled else { return }
         let rise = CHHapticEvent(
             eventType: .hapticContinuous,

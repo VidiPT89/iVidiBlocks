@@ -14,8 +14,8 @@ extension Color {
     static let textPrimary = Color("TextPrimary")
     static let textSecondary = Color("TextSecondary")
 
-    static func piece(_ type: TetrominoType) -> Color {
-        Color(type.colorName)
+    static func piece(_ color: ShardColor) -> Color {
+        Color(color.colorName)
     }
 }
 

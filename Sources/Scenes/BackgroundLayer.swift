@@ -15,8 +15,8 @@ private extension UIColor {
     }
 }
 
-/// The surface the playfield sits on: a quiet warm gradient that briefly
-/// heats up on a level change. Deliberately plain, because anything moving
+/// The surface the well sits on: a quiet warm glow around the core that
+/// briefly heats up on a level change. Deliberately plain, because anything moving
 /// inside the well competes with the pieces the player is reading.
 final class BackgroundLayer: SKNode {
 
@@ -60,20 +60,21 @@ final class BackgroundLayer: SKNode {
         let bottom = UIColor(named: "BgPrimary", in: .main, compatibleWith: traits) ?? .black
         let ember = UIColor(named: "BrandEmber", in: .main, compatibleWith: traits) ?? .orange
         // Mixed into an opaque colour instead of layered as a translucent one,
-        // so the page gradient never bleeds through the floor of the well.
+        // so the page gradient never bleeds through the well.
         let floor = bottom.blended(with: ember, amount: dark ? 0.16 : 0.09)
 
         let image = UIGraphicsImageRenderer(size: size).image { ctx in
-            let colors = [top.cgColor, bottom.cgColor, floor.cgColor] as CFArray
-            // The renderer puts y = 0 at the top, so this runs the cool tone
-            // down from the ceiling into the warm glow at the floor.
+            let colors = [floor.cgColor, bottom.cgColor, top.cgColor] as CFArray
+            // Warm at the core, cooling towards the rim, so the eye is drawn
+            // to where the shards are heading.
+            let centre = CGPoint(x: size.width / 2, y: size.height / 2)
             if let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
-                                         colors: colors, locations: [0, 0.72, 1]) {
-                ctx.cgContext.drawLinearGradient(
+                                         colors: colors, locations: [0, 0.45, 1]) {
+                ctx.cgContext.drawRadialGradient(
                     gradient,
-                    start: CGPoint(x: 0, y: 0),
-                    end: CGPoint(x: 0, y: size.height),
-                    options: []
+                    startCenter: centre, startRadius: 0,
+                    endCenter: centre, endRadius: size.width / 2,
+                    options: [.drawsAfterEndLocation]
                 )
             }
         }

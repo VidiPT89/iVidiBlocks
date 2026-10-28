@@ -6,10 +6,10 @@ enum SoundEffect: Hashable {
     case rotate
     case lock
     case hardDrop
-    case hold
+    case pulse
     case clear(Int)
-    case tSpin
-    case perfectClear
+    case chain
+    case coreCharged
     case levelUp
     case gameOver
     case uiTap
@@ -17,7 +17,7 @@ enum SoundEffect: Hashable {
     /// Louder events briefly duck the music so they cut through.
     var ducksMusic: Bool {
         switch self {
-        case .clear, .tSpin, .perfectClear, .levelUp, .gameOver: return true
+        case .clear, .chain, .coreCharged, .levelUp, .gameOver: return true
         default: return false
         }
     }
@@ -203,9 +203,14 @@ final class AudioManager: ObservableObject {
         case .lock:
             return [.init(frequency: 150, start: 0, duration: 0.08,
                           amplitude: 0.22, waveform: .square, bend: 0.75)]
-        case .hold:
-            return [.init(frequency: 400, start: 0, duration: 0.07,
-                          amplitude: 0.16, waveform: .triangle, bend: 1.35)]
+        case .pulse:
+            // A deep sweep outwards from the core, with a burst of air.
+            return [
+                .init(frequency: 110, start: 0, duration: 0.45,
+                      amplitude: 0.26, waveform: .sine, bend: 3.0),
+                .init(frequency: 220, start: 0.02, duration: 0.30,
+                      amplitude: 0.12, waveform: .noise)
+            ]
         case .hardDrop:
             return [
                 .init(frequency: 300, start: 0, duration: 0.10,
@@ -213,24 +218,24 @@ final class AudioManager: ObservableObject {
                 .init(frequency: 90, start: 0.03, duration: 0.12,
                       amplitude: 0.18, waveform: .noise)
             ]
-        case let .clear(lines):
-            // Each extra line adds a step to a rising arpeggio.
+        case let .clear(size):
+            // Each extra ring or arc adds a step to a rising arpeggio.
             let scale: [Double] = [523.25, 659.25, 783.99, 1046.50, 1318.51]
-            return (0..<max(1, min(lines, 4)) + 1).map { step in
+            return (0..<max(1, min(size, 4)) + 1).map { step in
                 .init(frequency: scale[min(step, scale.count - 1)],
                       start: Double(step) * 0.055,
                       duration: 0.18,
                       amplitude: 0.20,
                       waveform: .triangle)
             }
-        case .tSpin:
+        case .chain:
             return [
                 .init(frequency: 440, start: 0, duration: 0.22,
                       amplitude: 0.20, waveform: .sine, bend: 1.6),
                 .init(frequency: 660, start: 0.06, duration: 0.22,
                       amplitude: 0.14, waveform: .sine, bend: 1.4)
             ]
-        case .perfectClear:
+        case .coreCharged:
             let chord: [Double] = [523.25, 659.25, 783.99, 1046.50]
             return chord.enumerated().map { index, frequency in
                 .init(frequency: frequency, start: Double(index) * 0.07,
@@ -291,16 +296,16 @@ final class AudioManager: ObservableObject {
 }
 
 private extension SoundEffect {
-    /// Line-clear sounds are rendered per line count, everything else is
+    /// Clear sounds are rendered per size, everything else is
     /// stored under itself.
     var normalised: SoundEffect {
-        if case let .clear(lines) = self { return .clear(min(max(lines, 1), 4)) }
+        if case let .clear(size) = self { return .clear(min(max(size, 1), 4)) }
         return self
     }
 
     static var allBaseCases: [SoundEffect] {
-        [.move, .rotate, .lock, .hardDrop, .hold, .tSpin,
-         .perfectClear, .levelUp, .gameOver, .uiTap,
+        [.move, .rotate, .lock, .hardDrop, .pulse, .chain,
+         .coreCharged, .levelUp, .gameOver, .uiTap,
          .clear(1), .clear(2), .clear(3), .clear(4)]
     }
 }

@@ -20,14 +20,14 @@ final class StatsStoreTests: XCTestCase {
 
     @discardableResult
     private func submit(_ store: StatsStore,
-                        mode: GameMode = .marathon,
+                        mode: GameMode = .orbit,
                         score: Int = 0,
-                        lines: Int = 0,
+                        shards: Int = 0,
                         level: Int = 1,
                         time: TimeInterval = 0,
                         reason: GameOverReason = .topOut,
                         runStats: RunStats = RunStats()) -> Bool {
-        store.submit(mode: mode, score: score, lines: lines, level: level,
+        store.submit(mode: mode, score: score, shards: shards, level: level,
                      time: time, reason: reason, runStats: runStats)
     }
 
@@ -36,14 +36,14 @@ final class StatsStoreTests: XCTestCase {
     func testAScorelessRunIsNotARecord() {
         let store = store()
         XCTAssertFalse(submit(store, score: 0))
-        XCTAssertNil(store.record(for: .marathon),
+        XCTAssertNil(store.record(for: .orbit),
                      "topping out with nothing on the board is not a personal best")
     }
 
     func testTheFirstScoringRunSetsTheRecord() {
         let store = store()
-        XCTAssertTrue(submit(store, score: 1200, lines: 4, level: 2))
-        XCTAssertEqual(store.record(for: .marathon)?.score, 1200)
+        XCTAssertTrue(submit(store, score: 1200, shards: 4, level: 2))
+        XCTAssertEqual(store.record(for: .orbit)?.score, 1200)
     }
 
     func testOnlyAHigherScoreReplacesTheRecord() {
@@ -51,66 +51,68 @@ final class StatsStoreTests: XCTestCase {
         submit(store, score: 5000)
 
         XCTAssertFalse(submit(store, score: 4999))
-        XCTAssertEqual(store.record(for: .marathon)?.score, 5000)
+        XCTAssertEqual(store.record(for: .orbit)?.score, 5000)
 
         XCTAssertTrue(submit(store, score: 5001))
-        XCTAssertEqual(store.record(for: .marathon)?.score, 5001)
+        XCTAssertEqual(store.record(for: .orbit)?.score, 5001)
     }
 
     func testSprintOnlyRecordsRunsThatReachedTheTarget() {
         let store = store()
-        XCTAssertFalse(submit(store, mode: .sprint, score: 9000, time: 30, reason: .topOut),
-                       "giving up after 12 lines is not a 40-line time")
-        XCTAssertNil(store.record(for: .sprint))
+        XCTAssertFalse(submit(store, mode: .target, score: 9000, time: 30, reason: .topOut),
+                       "giving up early is not a Target time")
+        XCTAssertNil(store.record(for: .target))
 
-        XCTAssertTrue(submit(store, mode: .sprint, score: 9000, time: 95, reason: .targetReached))
-        XCTAssertEqual(store.record(for: .sprint)?.time, 95)
+        XCTAssertTrue(submit(store, mode: .target, score: 9000, time: 95, reason: .targetReached))
+        XCTAssertEqual(store.record(for: .target)?.time, 95)
     }
 
     func testSprintRanksOnTheFasterTime() {
         let store = store()
-        submit(store, mode: .sprint, time: 95, reason: .targetReached)
+        submit(store, mode: .target, time: 95, reason: .targetReached)
 
-        XCTAssertFalse(submit(store, mode: .sprint, time: 110, reason: .targetReached))
-        XCTAssertEqual(store.record(for: .sprint)?.time, 95)
+        XCTAssertFalse(submit(store, mode: .target, time: 110, reason: .targetReached))
+        XCTAssertEqual(store.record(for: .target)?.time, 95)
 
-        XCTAssertTrue(submit(store, mode: .sprint, time: 71.5, reason: .targetReached))
-        XCTAssertEqual(store.record(for: .sprint)?.time, 71.5)
+        XCTAssertTrue(submit(store, mode: .target, time: 71.5, reason: .targetReached))
+        XCTAssertEqual(store.record(for: .target)?.time, 71.5)
     }
 
     func testRecordsAreKeptPerMode() {
         let store = store()
-        submit(store, mode: .marathon, score: 800)
-        submit(store, mode: .ultra, score: 30_000)
+        submit(store, mode: .orbit, score: 800)
+        submit(store, mode: .blitz, score: 30_000)
 
-        XCTAssertEqual(store.record(for: .marathon)?.score, 800)
-        XCTAssertEqual(store.record(for: .ultra)?.score, 30_000)
-        XCTAssertNil(store.record(for: .sprint))
+        XCTAssertEqual(store.record(for: .orbit)?.score, 800)
+        XCTAssertEqual(store.record(for: .blitz)?.score, 30_000)
+        XCTAssertNil(store.record(for: .target))
     }
 
     // MARK: Lifetime totals
 
     func testLifetimeTotalsAccumulateEvenForScorelessRuns() {
         let store = store()
-        let run = RunStats(piecesPlaced: 40, linesCleared: 6, quads: 1, tSpins: 2, maxCombo: 3)
+        let run = RunStats(piecesPlaced: 40, shardsCleared: 6, ringsCleared: 1, arcsFused: 2,
+                           pulses: 1, maxChain: 3)
 
         submit(store, score: 0, time: 30, runStats: run)
         submit(store, score: 500, time: 45, runStats: run)
 
         XCTAssertEqual(store.lifetime.gamesPlayed, 2)
         XCTAssertEqual(store.lifetime.piecesPlaced, 80)
-        XCTAssertEqual(store.lifetime.linesCleared, 12)
-        XCTAssertEqual(store.lifetime.quads, 2)
-        XCTAssertEqual(store.lifetime.tSpins, 4)
+        XCTAssertEqual(store.lifetime.shardsCleared, 12)
+        XCTAssertEqual(store.lifetime.ringsCleared, 2)
+        XCTAssertEqual(store.lifetime.arcsFused, 4)
+        XCTAssertEqual(store.lifetime.pulses, 2)
         XCTAssertEqual(store.lifetime.timePlayed, 75)
     }
 
-    func testTheBestComboIsKeptRatherThanSummed() {
+    func testTheLongestChainIsKeptRatherThanSummed() {
         let store = store()
-        submit(store, score: 100, runStats: RunStats(maxCombo: 5))
-        submit(store, score: 100, runStats: RunStats(maxCombo: 2))
+        submit(store, score: 100, runStats: RunStats(maxChain: 5))
+        submit(store, score: 100, runStats: RunStats(maxChain: 2))
 
-        XCTAssertEqual(store.lifetime.bestCombo, 5, "a weaker run must not lower it")
+        XCTAssertEqual(store.lifetime.bestChain, 5, "a weaker run must not lower it")
     }
 
     func testResetClearsEverything() {
@@ -119,7 +121,7 @@ final class StatsStoreTests: XCTestCase {
 
         store.reset()
 
-        XCTAssertNil(store.record(for: .marathon))
+        XCTAssertNil(store.record(for: .orbit))
         XCTAssertEqual(store.lifetime, LifetimeStats())
     }
 
@@ -127,11 +129,11 @@ final class StatsStoreTests: XCTestCase {
 
     func testStatsSurviveARelaunch() {
         let first = store()
-        submit(first, score: 7777, lines: 20, runStats: RunStats(piecesPlaced: 99))
+        submit(first, score: 7777, shards: 20, runStats: RunStats(piecesPlaced: 99))
         first.flush()
 
         let second = store()
-        XCTAssertEqual(second.record(for: .marathon)?.score, 7777)
+        XCTAssertEqual(second.record(for: .orbit)?.score, 7777)
         XCTAssertEqual(second.lifetime.piecesPlaced, 99)
     }
 
@@ -141,14 +143,14 @@ final class StatsStoreTests: XCTestCase {
         first.reset()
         first.flush()
 
-        XCTAssertNil(store().record(for: .marathon))
+        XCTAssertNil(store().record(for: .orbit))
     }
 
     func testACorruptFileIsIgnoredRatherThanCrashing() throws {
         try Data("not json at all".utf8).write(to: fileURL)
 
         let store = store()
-        XCTAssertNil(store.record(for: .marathon))
+        XCTAssertNil(store.record(for: .orbit))
         XCTAssertEqual(store.lifetime, LifetimeStats())
     }
     func testDebouncedWritesCannotRestoreStatsAfterResetAndFlush() {
@@ -159,7 +161,7 @@ final class StatsStoreTests: XCTestCase {
         let settled = expectation(description: "pending saves settled")
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { settled.fulfill() }
         wait(for: [settled], timeout: 3)
-        XCTAssertNil(store().record(for: .marathon))
+        XCTAssertNil(store().record(for: .orbit))
         XCTAssertEqual(store().lifetime.gamesPlayed, 0)
     }
 

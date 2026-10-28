@@ -272,15 +272,15 @@ private struct SavedRunCard: View {
     }
 
     private var summary: String {
-        "\(loc.string(.hudScore)) \(saved.score.formatted()) · \(loc.string(.hudLines)) \(saved.lines)"
+        "\(loc.string(.hudScore)) \(saved.score.formatted()) · \(loc.string(.hudShards)) \(saved.shards)"
     }
 }
 
-/// Faint tetrominoes drifting behind the menu so the screen is never still.
+/// Faint shards drifting behind the menu so the screen is never still.
 private struct DriftingPiecesBackdrop: View {
     private struct Drifter: Identifiable {
         let id = UUID()
-        let type: TetrominoType
+        let shard: Shard
         let x: CGFloat
         let size: CGFloat
         let duration: Double
@@ -288,7 +288,7 @@ private struct DriftingPiecesBackdrop: View {
     }
 
     @State private var drifters: [Drifter] = (0..<8).map { index in
-        Drifter(type: TetrominoType.allCases[index % TetrominoType.allCases.count],
+        Drifter(shard: Shard.all[(index * 5) % Shard.all.count],
                 x: CGFloat.random(in: 0.05...0.95),
                 size: CGFloat.random(in: 8...15),
                 duration: Double.random(in: 14...26),
@@ -300,7 +300,7 @@ private struct DriftingPiecesBackdrop: View {
         GeometryReader { proxy in
             ZStack {
                 ForEach(drifters) { drifter in
-                    PieceThumbnail(type: drifter.type, cellSize: drifter.size)
+                    PieceThumbnail(shard: drifter.shard, cellSize: drifter.size)
                         .opacity(0.09)
                         .position(x: proxy.size.width * drifter.x,
                                   y: running ? proxy.size.height + 80 : -80)

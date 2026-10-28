@@ -1,21 +1,27 @@
 import XCTest
 @testable import iVidiBlocks
 
-/// Hands out the seven pieces in a fixed order so a test can rely on
-/// exactly which piece is falling.
+/// Hands out shards in a fixed order so a test can rely on exactly which
+/// shard is falling.
 private struct FixedBagOrder: PieceRandomSource {
-    let order: [TetrominoType]
-    func shuffle(_ pieces: inout [TetrominoType]) { pieces = order }
+    let order: [Shard]
+    func shuffle(_ shards: inout [Shard]) { shards = order }
 }
 
 final class GameEngineTests: XCTestCase {
 
-    private let ordered = FixedBagOrder(order: [.i, .o, .t, .s, .z, .j, .l])
+    private let core = Board.rings - 1
+    private let duo = Shard(shape: .duo, color: .amber)
+    private let spark = Shard(shape: .spark, color: .ember)
 
-    private func engine(mode: GameMode = .marathon,
+    private func engine(mode: GameMode = .orbit,
                         board: Board = Board(),
-                        config: GameConfig = .default) -> GameEngine {
-        let engine = GameEngine(mode: mode, config: config, random: ordered, board: board)
+                        order: [Shard]? = nil,
+                        config: GameConfig = .default,
+                        charge: Int = 0) -> GameEngine {
+        let engine = GameEngine(mode: mode, config: config,
+                                random: FixedBagOrder(order: order ?? [duo]),
+                                board: board, charge: charge)
         engine.startImmediately()
         return engine
     }
@@ -30,531 +36,369 @@ final class GameEngineTests: XCTestCase {
         }
     }
 
-    private func filledRow(except gaps: [Int], at y: Int, on board: inout Board) {
-        for x in 0..<Board.columns where !gaps.contains(x) {
-            board[x, y] = .z
+    /// Fills a ring with alternating colours, leaving the given sectors open.
+    private func ring(at y: Int, except gaps: [Int], on board: inout Board) {
+        let colors: [ShardColor] = [.tide, .ember]
+        for x in 0..<Board.sectors where !gaps.contains(x) {
+            board[x, y] = colors[x % 2]
         }
     }
 
-    // MARK: Spawning
+    // MARK: Spawning and moving
 
-    func testStartSpawnsTheFirstPieceOfTheBag() {
+    func testStartSpawnsTheFirstShardJustInsideTheRim() throws {
         let engine = engine()
-        XCTAssertEqual(engine.phase, .playing)
-        XCTAssertEqual(engine.current?.type, .i)
-        XCTAssertEqual(engine.preview.count, RandomBag.previewCount)
+        let piece = try XCTUnwrap(engine.current)
+        XCTAssertEqual(piece.shard, duo)
+        XCTAssertEqual(piece.origin, Point(x: 0, y: Board.bufferRings))
     }
 
-    func testCountdownRunsBeforeTheFirstPieceAppears() {
-        let engine = GameEngine(mode: .marathon, random: ordered)
-        XCTAssertEqual(engine.phase, .ready)
+    func testCountdownRunsBeforeTheFirstShardAppears() {
+        let engine = GameEngine(mode: .orbit)
         XCTAssertNil(engine.current)
-
-        advance(engine, by: GameEngine.readyDuration + 0.1)
-        XCTAssertEqual(engine.phase, .playing)
+        engine.update(deltaTime: GameEngine.readyDuration / 2)
+        XCTAssertNil(engine.current)
+        engine.update(deltaTime: GameEngine.readyDuration)
         XCTAssertNotNil(engine.current)
     }
 
-    func testGameEndsImmediatelyWhenTheSpawnAreaIsBlocked() {
+    func testMovingWrapsAllTheWayRoundWithoutWalls() throws {
+        let engine = engine()
+        XCTAssertTrue(engine.move(dx: -1))
+        XCTAssertEqual(try XCTUnwrap(engine.current).origin.x, Board.sectors - 1)
+        for _ in 0..<Board.sectors { XCTAssertTrue(engine.move(dx: 1)) }
+        XCTAssertEqual(try XCTUnwrap(engine.current).origin.x, Board.sectors - 1)
+    }
+
+    func testMovingIsBlockedOnlyByCells() {
         var board = Board()
-        for y in 0..<4 { filledRow(except: [], at: y, on: &board) }
+        board[2, Board.bufferRings] = .tide
+        let engine = engine(board: board)
+        XCTAssertFalse(engine.move(dx: 1))
+    }
+
+    func testTheNextShardEntersWhereTheLastOneLanded() throws {
+        let engine = engine()
+        for _ in 0..<5 { engine.move(dx: 1) }
+        engine.hardDrop()
+        XCTAssertEqual(engine.aim, 5)
+        XCTAssertEqual(try XCTUnwrap(engine.current).origin.x, 5)
+    }
+
+    func testGravityPullsTheShardOneRingPerInterval() throws {
+        let engine = engine()
+        let start = try XCTUnwrap(engine.current).origin.y
+        advance(engine, by: ScoreCalculator.gravityInterval(level: 1) + 0.01)
+        XCTAssertEqual(try XCTUnwrap(engine.current).origin.y, start + 1)
+    }
+
+    func testGhostSitsWhereADropWouldLand() throws {
+        let engine = engine()
+        XCTAssertEqual(try XCTUnwrap(engine.ghost).origin.y, core)
+        let off = self.engine(config: GameConfig(ghostEnabled: false))
+        XCTAssertNil(off.ghost)
+    }
+
+    func testDroppingLocksAgainstTheCoreAndDealsTheNextShard() {
+        let engine = engine()
+        engine.hardDrop()
+        XCTAssertEqual(engine.board[0, core], .amber)
+        XCTAssertEqual(engine.board[1, core], .amber)
+        XCTAssertEqual(engine.stats.piecesPlaced, 1)
+        XCTAssertNotNil(engine.current)
+        XCTAssertGreaterThan(engine.score, 0, "a drop earns a little")
+    }
+
+    func testALandedShardWaitsForTheLockDelay() throws {
+        let engine = engine()
+        while engine.current.map({ $0.origin.y }) != core {
+            advance(engine, by: ScoreCalculator.gravityInterval(level: 1))
+        }
+        advance(engine, by: GameEngine.lockDelay / 2)
+        XCTAssertEqual(engine.stats.piecesPlaced, 0)
+        advance(engine, by: GameEngine.lockDelay)
+        XCTAssertEqual(engine.stats.piecesPlaced, 1)
+    }
+
+    func testMovingOnTheCoreCannotStallForever() {
+        let engine = engine()
+        engine.setSoftDrop(true)
+        advance(engine, by: 1)
+        engine.setSoftDrop(false)
+        for step in 0..<200 {
+            engine.move(dx: step % 2 == 0 ? 1 : -1)
+            advance(engine, by: 0.1)
+            if engine.stats.piecesPlaced > 0 { break }
+        }
+        XCTAssertEqual(engine.stats.piecesPlaced, 1)
+    }
+
+    func testABlockedEntryEndsTheRun() {
+        var board = Board()
+        for y in 0..<Board.rings { board[0, y] = .tide }
         let engine = engine(board: board)
         XCTAssertEqual(engine.phase, .over(.topOut))
+        XCTAssertNil(engine.snapshot())
     }
 
-    // MARK: Movement
+    // MARK: Clearing
 
-    func testMovingStopsAtTheWalls() {
-        let engine = engine()
-        while engine.move(dx: -1) {}
-        XCTAssertEqual(engine.current?.cells.map(\.x).min(), 0)
-
-        while engine.move(dx: 1) {}
-        XCTAssertEqual(engine.current?.cells.map(\.x).max(), Board.columns - 1)
-    }
-
-    func testGravityDropsThePieceOneRowPerInterval() {
-        let engine = engine()
-        let startY = engine.current!.origin.y
-        advance(engine, by: ScoreCalculator.gravityInterval(level: 1) + 0.02)
-        XCTAssertEqual(engine.current?.origin.y, startY + 1)
-    }
-
-    func testGhostSitsWhereAHardDropWouldLand() {
-        let engine = engine()
-        let ghost = engine.ghost
-        XCTAssertNotNil(ghost)
-        XCTAssertEqual(ghost?.cells.map(\.y).max(), Board.rows - 1)
-        XCTAssertEqual(ghost?.origin.x, engine.current?.origin.x)
-    }
-
-    func testGhostIsAbsentWhenTurnedOff() {
-        var config = GameConfig.default
-        config.ghostEnabled = false
-        let engine = engine(config: config)
-        XCTAssertNil(engine.ghost)
-    }
-
-    // MARK: Dropping and locking
-
-    func testHardDropLocksAndBringsInTheNextPiece() {
-        let engine = engine()
-        engine.hardDrop()
-        XCTAssertEqual(engine.current?.type, .o, "the next piece should be up")
-        XCTAssertEqual(engine.stats.piecesPlaced, 1)
-        XCTAssertGreaterThan(engine.score, 0, "a hard drop pays two points per row")
-    }
-
-    func testAPieceOnTheFloorDoesNotLockBeforeTheDelayExpires() {
-        let engine = engine()
-        engine.setHorizontalInput(0)
-        let landed = engine.board.hardDropPosition(of: engine.current!)
-        while engine.current!.origin.y < landed.origin.y {
-            advance(engine, by: ScoreCalculator.gravityInterval(level: 1) + 0.001)
-        }
-
-        advance(engine, by: GameEngine.lockDelay * 0.5)
-        XCTAssertEqual(engine.stats.piecesPlaced, 0, "it locked too early")
-
-        advance(engine, by: GameEngine.lockDelay)
-        XCTAssertEqual(engine.stats.piecesPlaced, 1, "it never locked")
-    }
-
-    func testMovingOnTheFloorCannotStallForever() {
-        let engine = engine()
-        engine.hardDrop()                      // place the I flat on the floor
-
-        // Bring the next piece down to the floor, then wiggle it endlessly.
-        while engine.board.canPlace(engine.current!.moved(dx: 0, dy: 1)) {
-            advance(engine, by: ScoreCalculator.gravityInterval(level: 1) + 0.001)
-        }
-        for step in 0..<200 {
-            engine.move(dx: step.isMultiple(of: 2) ? -1 : 1)
-            advance(engine, by: 0.05)
-            if engine.stats.piecesPlaced > 1 { break }
-        }
-        XCTAssertGreaterThan(engine.stats.piecesPlaced, 1,
-                             "the move-reset limit should force the lock")
-    }
-
-    // MARK: Hold
-
-    func testHoldStoresThePieceAndCanOnlyBeUsedOncePerPiece() {
-        let engine = engine()
-        XCTAssertEqual(engine.current?.type, .i)
-
-        engine.hold()
-        XCTAssertEqual(engine.holdPiece, .i)
-        XCTAssertEqual(engine.current?.type, .o, "the next piece takes over")
-
-        engine.hold()
-        XCTAssertEqual(engine.holdPiece, .i, "a second hold must be refused")
-        XCTAssertEqual(engine.current?.type, .o)
-        XCTAssertTrue(engine.drainEvents().contains(.holdRejected))
-    }
-
-    func testHoldSwapsBackAfterAPieceLocks() {
-        let engine = engine()
-        engine.hold()                       // I into hold, O now falling
-        engine.hardDrop()                   // lock the O, hold frees up
-        XCTAssertEqual(engine.current?.type, .t)
-
-        engine.hold()
-        XCTAssertEqual(engine.holdPiece, .t)
-        XCTAssertEqual(engine.current?.type, .i, "the stored I should come back")
-        XCTAssertEqual(engine.current?.state, .spawn, "and re-enter unrotated")
-    }
-
-    // MARK: Line clears
-
-    func testCompletingARowClearsItAfterTheAnimationDelay() {
+    func testClosingARingClearsItAfterTheAnimation() {
         var board = Board()
-        filledRow(except: [0, 1, 2, 3], at: Board.rows - 1, on: &board)
+        ring(at: core, except: [0, 1], on: &board)
         let engine = engine(board: board)
-
-        while engine.move(dx: -1) {}
         engine.hardDrop()
-
         XCTAssertEqual(engine.phase, .clearing)
-        XCTAssertEqual(engine.pendingClearRows, [Board.rows - 1])
-        XCTAssertEqual(engine.lines, 0, "the count waits for the animation")
+        XCTAssertEqual(engine.pendingClear.count, Board.sectors)
+        let events = engine.drainEvents()
+        XCTAssertTrue(events.contains { if case let .cleared(_, _, outcome) = $0 { return outcome.rings == 1 }; return false })
 
         advance(engine, by: GameEngine.clearDuration + 0.05)
         XCTAssertEqual(engine.phase, .playing)
-        XCTAssertEqual(engine.lines, 1)
-        XCTAssertTrue(engine.board.isEmpty(), "that was also a perfect clear")
+        XCTAssertTrue(engine.board.isEmpty())
+        XCTAssertEqual(engine.shards, Board.sectors)
+        XCTAssertEqual(engine.stats.ringsCleared, 1)
     }
 
-    func testAPerfectClearScoresItsBonus() {
+    func testFusingAnArcClearsOnlyThoseCells() {
         var board = Board()
-        filledRow(except: [0, 1, 2, 3], at: Board.rows - 1, on: &board)
+        for x in 2...4 { board[x, core] = .amber }
+        board[5, core] = .tide
         let engine = engine(board: board)
-        while engine.move(dx: -1) {}
         engine.hardDrop()
-
-        let cleared = engine.drainEvents().compactMap { event -> ClearOutcome? in
-            if case let .linesCleared(_, outcome) = event { return outcome }
-            return nil
-        }.first
-
-        XCTAssertEqual(cleared?.lines, 1)
-        XCTAssertEqual(cleared?.perfectClear, true)
-        XCTAssertEqual(cleared?.points, 800, "a perfect single is worth 800 at level 1")
+        advance(engine, by: GameEngine.clearDuration + 0.05)
+        XCTAssertEqual(engine.stats.arcsFused, 1)
+        XCTAssertEqual(engine.board.cells.compactMap { $0 }, [.tide])
     }
 
-    func testComboResetsWhenAPieceClearsNothing() {
-        var board = Board()
-        filledRow(except: [0, 1, 2, 3], at: Board.rows - 1, on: &board)
-        filledRow(except: [0, 1, 2, 3], at: Board.rows - 2, on: &board)
-        let engine = engine(board: board)
+    func testCellsSlidingInwardsCanSetOffAChain() throws {
+        let lesson = try XCTUnwrap(Lesson.all.first { $0.goal == .chain(2) })
+        let engine = engine(board: lesson.board)
+        engine.hardDrop()
+        var chains: [Int] = []
+        for _ in 0..<60 {
+            for case let .cleared(_, _, outcome) in engine.drainEvents() { chains.append(outcome.chain) }
+            advance(engine, by: 1.0 / 30.0)
+        }
+        XCTAssertEqual(chains, [1, 2])
+        XCTAssertEqual(engine.stats.maxChain, 2)
+        XCTAssertEqual(engine.chain, 0, "the cascade is over")
+    }
 
-        while engine.move(dx: -1) {}
+    func testAChainLinkMultipliesItsStep() throws {
+        let lesson = try XCTUnwrap(Lesson.all.first { $0.goal == .chain(2) })
+        let engine = engine(board: lesson.board)
+        engine.hardDrop()
+        var outcomes: [ClearOutcome] = []
+        for _ in 0..<60 {
+            for case let .cleared(_, _, outcome) in engine.drainEvents() { outcomes.append(outcome) }
+            advance(engine, by: 1.0 / 30.0)
+        }
+        let second = try XCTUnwrap(outcomes.last)
+        XCTAssertEqual(second.chain, 2)
+        XCTAssertEqual(second.points, ScoreCalculator.points(cells: second.cells, rings: 0,
+                                                            arcs: 1, chain: 1, level: 1) * 2)
+    }
+
+    // MARK: Core pulse
+
+    func testClearedCellsChargeTheCore() {
+        var board = Board()
+        ring(at: core, except: [0, 1], on: &board)
+        let engine = engine(board: board)
         engine.hardDrop()
         advance(engine, by: GameEngine.clearDuration + 0.05)
-        XCTAssertEqual(engine.combo, 0, "first clear of a chain")
+        XCTAssertEqual(engine.charge, Board.sectors)
+        XCTAssertFalse(engine.canPulse)
+    }
 
-        while engine.move(dx: -1) {}
-        engine.hardDrop()                    // the O drops into the open left
+    func testAFullChargeIsAnnouncedOnce() {
+        var board = Board()
+        ring(at: core, except: [0, 1], on: &board)
+        let engine = engine(board: board, charge: GameEngine.pulseCost - 4)
+        engine.hardDrop()
         advance(engine, by: GameEngine.clearDuration + 0.05)
-        XCTAssertEqual(engine.combo, -1, "a clear-less piece breaks the chain")
+        let charged = engine.drainEvents().filter { $0 == .coreCharged }
+        XCTAssertEqual(charged.count, 1)
+        XCTAssertEqual(engine.charge, GameEngine.pulseCost)
+        XCTAssertTrue(engine.canPulse)
+    }
+
+    func testAPulseWipesTheTwoInnermostRingsAndSpendsTheCharge() {
+        var board = Board()
+        ring(at: core, except: [3], on: &board)
+        ring(at: core - 1, except: [3, 4], on: &board)
+        board[7, core - 2] = .amber
+        let engine = engine(board: board, order: [spark], charge: GameEngine.pulseCost)
+        engine.pulse()
+        XCTAssertEqual(engine.charge, 0)
+        XCTAssertEqual(engine.board.cells.compactMap { $0 }, [.amber])
+        XCTAssertEqual(engine.board[7, core], .amber, "outer cells slide all the way in")
+        XCTAssertEqual(engine.stats.pulses, 1)
+        XCTAssertTrue(engine.drainEvents().contains { if case .pulsed = $0 { return true }; return false })
+    }
+
+    func testAPulseWithoutChargeIsRefused() {
+        var board = Board()
+        board[5, core] = .tide
+        let engine = engine(board: board)
+        engine.pulse()
+        XCTAssertEqual(engine.board[5, core], .tide)
+        XCTAssertEqual(engine.drainEvents().last, .pulseRejected)
     }
 
     // MARK: Modes
 
-    func testUltraCountsDownFromThreeMinutes() throws {
-        let engine = engine(mode: .ultra)
-        XCTAssertEqual(try XCTUnwrap(engine.timeRemaining), 180, accuracy: 0.1)
-
-        advance(engine, by: 5)
-        XCTAssertEqual(try XCTUnwrap(engine.timeRemaining), 175, accuracy: 0.2)
-    }
-
-    func testUltraEndsWhenTheClockRunsOut() {
-        let engine = engine(mode: .ultra)
-        // One long step so the clock expires before gravity gets a turn,
-        // which is the branch under test. Left to run in real time the
-        // stack would top out first, and that is a different ending.
-        engine.update(deltaTime: 181)
-        XCTAssertEqual(engine.phase, .over(.timeUp))
-        XCTAssertEqual(engine.timeRemaining, 0)
-    }
-
-    func testARunEndingMidClearStillCountsTheRowsItCompleted() {
+    func testTargetEndsOnceItsQuotaIsCleared() throws {
         var board = Board()
-        filledRow(except: [0, 1, 2, 3], at: Board.rows - 1, on: &board)
-        let engine = engine(mode: .ultra, board: board)
-
-        while engine.move(dx: -1) {}
-        engine.hardDrop()
-        XCTAssertEqual(engine.phase, .clearing)
-        XCTAssertEqual(engine.lines, 0)
-
-        // The clock expires before the clear animation has finished.
-        engine.update(deltaTime: 181)
-
-        XCTAssertEqual(engine.phase, .over(.timeUp))
-        XCTAssertEqual(engine.lines, 1, "the row was completed, so it counts")
-        XCTAssertEqual(engine.stats.linesCleared, 1)
-        XCTAssertTrue(engine.pendingClearRows.isEmpty)
-    }
-
-    func testAnUnplayedUltraRunStillTopsOut() {
-        let engine = engine(mode: .ultra)
-        advance(engine, by: 181)
-        XCTAssertEqual(engine.phase, .over(.topOut))
-    }
-
-    func testSprintTracksTheLinesLeft() {
-        var board = Board()
-        filledRow(except: [0, 1, 2, 3], at: Board.rows - 1, on: &board)
-        let engine = engine(mode: .sprint, board: board)
-        XCTAssertEqual(engine.linesRemaining, 40)
-
-        while engine.move(dx: -1) {}
+        ring(at: core, except: [0, 1], on: &board)
+        let fresh = engine(mode: .target, board: board)
+        XCTAssertEqual(fresh.shardsRemaining, 160)
+        var saved = try XCTUnwrap(fresh.snapshot())
+        saved.shards = 150
+        let engine = try XCTUnwrap(GameEngine(restoring: saved, random: FixedBagOrder(order: [duo])))
+        engine.resume()
         engine.hardDrop()
         advance(engine, by: GameEngine.clearDuration + 0.05)
-        XCTAssertEqual(engine.linesRemaining, 39)
+        XCTAssertEqual(engine.phase, .over(.targetReached))
+        XCTAssertEqual(engine.shardsRemaining, 0)
     }
 
-    func testMarathonIsTheOnlyModeThatGainsLevels() {
-        XCTAssertTrue(GameMode.marathon.levelsUp)
-        XCTAssertFalse(GameMode.sprint.levelsUp)
-        XCTAssertFalse(GameMode.ultra.levelsUp)
-        XCTAssertEqual(GameMode.sprint.lineTarget, 40)
-        XCTAssertEqual(GameMode.ultra.timeLimit, 180)
-        XCTAssertNil(GameMode.marathon.lineTarget)
-        XCTAssertNil(GameMode.marathon.timeLimit)
+    func testBlitzCountsDownAndEndsOnTime() throws {
+        let engine = engine(mode: .blitz)
+        XCTAssertEqual(try XCTUnwrap(engine.timeRemaining), 120)
+        engine.update(deltaTime: 1.0 / 60.0, clockDeltaTime: 120)
+        XCTAssertEqual(engine.phase, .over(.timeUp))
+        XCTAssertEqual(engine.elapsed, 120)
     }
 
-    // MARK: Pausing
+    func testOnlyOrbitGainsLevels() {
+        for mode in GameMode.allCases {
+            var board = Board()
+            for y in (core - 3)...core { ring(at: y, except: [0], on: &board) }
+            let engine = engine(mode: mode, board: board,
+                                order: [Shard(shape: .trio, color: .amber)])
+            engine.rotate(clockwise: true)
+            engine.hardDrop()
+            advance(engine, by: GameEngine.clearDuration + 0.05)
+            engine.hardDrop()
+            advance(engine, by: 0.5)
+            XCTAssertEqual(engine.level > 1, mode == .orbit, "\(mode)")
+        }
+    }
 
-    func testPausingFreezesGravity() {
+    // MARK: Pausing, danger and input hygiene
+
+    func testPausingFreezesGravityAndTheClock() throws {
         let engine = engine()
-        let y = engine.current!.origin.y
+        let y = try XCTUnwrap(engine.current).origin.y
         engine.pause()
-        advance(engine, by: 5)
-        XCTAssertEqual(engine.current?.origin.y, y)
-
+        advance(engine, by: 3)
+        XCTAssertEqual(try XCTUnwrap(engine.current).origin.y, y)
+        XCTAssertEqual(engine.elapsed, 0)
         engine.resume()
-        advance(engine, by: ScoreCalculator.gravityInterval(level: 1) + 0.02)
-        XCTAssertEqual(engine.current?.origin.y, y + 1)
+        XCTAssertEqual(engine.phase, .playing)
+    }
+
+    func testDangerRisesAsTheStackNearsTheRim() {
+        XCTAssertEqual(engine().dangerLevel, 0)
+        var board = Board()
+        board[8, Board.bufferRings] = .tide
+        let engine = engine(board: board)
+        XCTAssertEqual(engine.dangerLevel, 1)
     }
 
     func testInputIsIgnoredOnceTheGameIsOver() {
-        var board = Board()
-        for y in 0..<4 { filledRow(except: [], at: y, on: &board) }
-        let engine = engine(board: board)
-
-        XCTAssertFalse(engine.move(dx: -1))
+        let engine = engine(mode: .blitz)
+        engine.update(deltaTime: 1.0 / 60.0, clockDeltaTime: 200)
+        XCTAssertFalse(engine.move(dx: 1))
         XCTAssertFalse(engine.rotate(clockwise: true))
         engine.hardDrop()
-        XCTAssertEqual(engine.phase, .over(.topOut))
-    }
-
-    func testPausingDuringTheCountdownActuallyStopsTheClock() {
-        let engine = GameEngine(mode: .marathon, random: ordered)
-        XCTAssertEqual(engine.phase, .ready)
-
-        engine.pause()
-        XCTAssertEqual(engine.phase, .paused)
-
-        advance(engine, by: GameEngine.readyDuration + 1)
-        XCTAssertNil(engine.current, "the countdown must not run behind the pause overlay")
-
-        engine.resume()
-        XCTAssertEqual(engine.phase, .ready)
-        advance(engine, by: GameEngine.readyDuration + 0.1)
-        XCTAssertNotNil(engine.current)
-    }
-
-    // MARK: Danger vignette
-
-    func testAnEmptyBoardIsNeverInDanger() {
-        XCTAssertEqual(engine().dangerLevel, 0)
-    }
-
-    func testDangerRisesAsTheStackApproachesTheCeiling() {
-        func danger(topRow y: Int) -> Double {
-            var board = Board()
-            filledRow(except: [], at: y, on: &board)
-            return engine(board: board).dangerLevel
-        }
-
-        let farDown = danger(topRow: Board.rows - 1)
-        let closing = danger(topRow: Board.bufferRows + 3)
-        let atTheCeiling = danger(topRow: Board.bufferRows)
-
-        XCTAssertEqual(farDown, 0, "a stack on the floor is not a warning")
-        XCTAssertGreaterThan(closing, 0)
-        XCTAssertLessThan(closing, atTheCeiling)
-        XCTAssertEqual(atTheCeiling, 1)
-    }
-
-    func testDangerIsCappedWhenTheStackReachesTheBuffer() {
-        var board = Board()
-        filledRow(except: [], at: 0, on: &board)
-        XCTAssertEqual(engine(board: board).dangerLevel, 1)
-    }
-
-    // MARK: Events carry what the renderer needs
-
-    func testHardDropEventDescribesThePieceThatLanded() throws {
-        let engine = engine()
-        let start = try XCTUnwrap(engine.current)
-        engine.hardDrop()
-
-        let event = engine.drainEvents().compactMap { event -> (Int, Int, Piece)? in
-            guard case let .hardDropped(rows, from, piece) = event else { return nil }
-            return (rows, from, piece)
-        }.first
-        let landed = try XCTUnwrap(event)
-
-        XCTAssertGreaterThan(landed.0, 0)
-        XCTAssertEqual(landed.1, start.origin.y)
-        XCTAssertEqual(landed.2.type, start.type)
-        XCTAssertEqual(landed.2.origin.y, start.origin.y + landed.0)
-        XCTAssertNotEqual(engine.current, landed.2,
-                          "by drain time the engine has locked it and spawned the next piece, "
-                          + "so the renderer has to take the landed piece from the event")
-    }
-
-    func testLockEventDescribesThePieceThatLanded() throws {
-        let engine = engine()
-        let start = try XCTUnwrap(engine.current)
-        engine.hardDrop()
-
-        let locked = engine.drainEvents().compactMap { event -> Piece? in
-            guard case let .locked(piece) = event else { return nil }
-            return piece
-        }.first
-        let piece = try XCTUnwrap(locked)
-
-        XCTAssertEqual(piece.type, start.type)
-        XCTAssertEqual(piece.cells.count, 4)
-    }
-
-    func testUltraClockKeepsRunningWhileRowsClear() throws {
-        var board = Board()
-        filledRow(except: [0, 1, 2, 3], at: Board.rows - 1, on: &board)
-        let engine = engine(mode: .ultra, board: board)
-
-        while engine.move(dx: -1) {}
-        engine.hardDrop()
-        XCTAssertEqual(engine.phase, .clearing)
-
-        let before = try XCTUnwrap(engine.timeRemaining)
-        advance(engine, by: GameEngine.clearDuration)
-        let after = try XCTUnwrap(engine.timeRemaining)
-
-        XCTAssertEqual(before - after, GameEngine.clearDuration, accuracy: 0.05,
-                       "the Ultra clock must not pause for the clear animation")
-    }
-
-    func testHoldingIntoABlockedSpawnReportsOnlyTheGameOver() {
-        // The I spawns on row 1 and clears these two cells, but the O that
-        // follows it needs row 0 as well, so the swap has nowhere to go.
-        var board = Board()
-        board[4, 0] = .z
-        board[5, 0] = .z
-        let engine = engine(board: board)
-        XCTAssertEqual(engine.current?.type, .i)
-        _ = engine.drainEvents()
-
-        engine.hold()
-
-        let events = engine.drainEvents()
-        XCTAssertTrue(events.contains(.gameOver(reason: .topOut)))
-        XCTAssertFalse(events.contains(.holdSwapped),
-                       "a swap that could not spawn is not a completed swap")
-    }
-    func testSoftDropNeverSlowsHighLevelGravity() throws {
-        let config = GameConfig(das: 0.133, arr: 0.033, ghostEnabled: true, startLevel: 20)
-        let normal = engine(config: config)
-        let soft = engine(config: config)
-        soft.setSoftDrop(true)
-        normal.update(deltaTime: 1.0 / 60)
-        soft.update(deltaTime: 1.0 / 60)
-        XCTAssertGreaterThanOrEqual(try XCTUnwrap(soft.current).origin.y,
-                                   try XCTUnwrap(normal.current).origin.y)
+        engine.pulse()
+        XCTAssertEqual(engine.stats.piecesPlaced, 0)
     }
 
     func testInvalidFrameDurationsDoNotChangeTheRun() {
         let engine = engine()
-        let piece = engine.current
-        for delta in [-1.0, .nan, .infinity, 0] { engine.update(deltaTime: delta) }
+        let before = engine.current
+        engine.update(deltaTime: .nan)
+        engine.update(deltaTime: -1)
+        engine.update(deltaTime: .infinity)
+        XCTAssertEqual(engine.current, before)
         XCTAssertEqual(engine.elapsed, 0)
-        XCTAssertEqual(engine.current, piece)
     }
 
-    func testUltraElapsedTimeStopsAtTheLimit() {
-        let engine = engine(mode: .ultra)
-        engine.update(deltaTime: 181)
-        XCTAssertEqual(engine.elapsed, 180)
-    }
-
-    func testInputPressedWhilePausedDoesNotLeakIntoResume() {
+    func testHeldSidewaysInputRepeatsAndStopsOnRelease() throws {
         let engine = engine()
-        let piece = engine.current
-        engine.pause()
         engine.setHorizontalInput(1)
-        engine.setSoftDrop(true)
-        engine.resume()
-        advance(engine, by: 0.3)
-        XCTAssertEqual(engine.current, piece)
-    }
-
-    func testZeroMovementDoesNotEmitAnEvent() {
-        let engine = engine()
-        _ = engine.drainEvents()
-        XCTAssertFalse(engine.move(dx: 0))
-        XCTAssertTrue(engine.drainEvents().isEmpty)
-    }
-
-    func testHeldHorizontalInputRepeatsAndStopsOnRelease() throws {
-        let engine = engine()
-        engine.setHorizontalInput(-1)
-        let firstX = try XCTUnwrap(engine.current).origin.x
-        advance(engine, by: 0.25)
-        XCTAssertLessThan(try XCTUnwrap(engine.current).origin.x, firstX)
+        advance(engine, by: 0.4)
+        let moved = try XCTUnwrap(engine.current).origin.x
+        XCTAssertGreaterThan(moved, 2)
         engine.setHorizontalInput(0)
-        let releasedX = engine.current?.origin.x
-        advance(engine, by: 0.25)
-        XCTAssertEqual(engine.current?.origin.x, releasedX)
+        advance(engine, by: 0.3)
+        XCTAssertEqual(try XCTUnwrap(engine.current).origin.x, moved)
     }
 
-    func testStartImmediatelyCannotReplaceAnActivePiece() {
-        let engine = engine()
-        let piece = engine.current
-        let preview = engine.preview
-        engine.startImmediately()
-        XCTAssertEqual(engine.current, piece)
-        XCTAssertEqual(engine.preview, preview)
+    func testAnInstantRepeatStopsAfterOneLap() {
+        let engine = engine(config: GameConfig(das: 0, arr: 0))
+        engine.setHorizontalInput(1)
+        engine.update(deltaTime: 1.0 / 60.0)
+        XCTAssertLessThanOrEqual(engine.drainEvents().filter { $0 == .moved }.count, Board.sectors + 1)
     }
 
-    func testClockUsesRealElapsedTimeEvenWhenPhysicsIsClamped() {
-        let engine = engine(mode: .ultra)
-        let piece = engine.current
-        engine.update(deltaTime: 0.05, clockDeltaTime: 2)
-        XCTAssertEqual(engine.elapsed, 2)
-        XCTAssertEqual(engine.current, piece)
-        engine.pause()
-        engine.update(deltaTime: 0.05, clockDeltaTime: 20)
-        XCTAssertEqual(engine.elapsed, 2)
-    }
-
-    func testAccessibleSoftDropMovesOneRowAndAwardsOnePoint() throws {
+    func testAccessibleSoftDropMovesOneRingAndScoresOnePoint() throws {
         let engine = engine()
         let y = try XCTUnwrap(engine.current).origin.y
         engine.softDropStep()
-        XCTAssertEqual(engine.current?.origin.y, y + 1)
-        XCTAssertEqual(engine.score, 1)
-        engine.pause()
-        engine.softDropStep()
-        XCTAssertEqual(engine.current?.origin.y, y + 1)
+        XCTAssertEqual(try XCTUnwrap(engine.current).origin.y, y + 1)
         XCTAssertEqual(engine.score, 1)
     }
 
-    func testSeededMixedInputPreservesBoardAndScoringInvariants() {
+    func testDropEventDescribesTheShardThatLanded() throws {
+        let engine = engine()
+        _ = engine.drainEvents()
+        engine.hardDrop()
+        let drop = engine.drainEvents().first { if case .hardDropped = $0 { return true }; return false }
+        guard case let .hardDropped(rings, from, piece) = try XCTUnwrap(drop) else { return XCTFail() }
+        XCTAssertEqual(from, Board.bufferRings)
+        XCTAssertEqual(rings, core - Board.bufferRings)
+        XCTAssertEqual(piece.origin.y, core)
+    }
+
+    /// Plays many seeded runs with mixed input and checks that nothing the
+    /// renderer depends on is ever broken.
+    func testSeededMixedInputPreservesInvariants() {
         for mode in GameMode.allCases {
-            for seed in 1...20 {
+            for seed in 1...15 {
                 let engine = GameEngine(mode: mode, random: SeededPieceRandom(seed: UInt64(seed)))
                 engine.startImmediately()
-                var random = UInt64(seed)
-                var previousScore = 0
-                var previousLines = 0
-                for _ in 0..<500 {
+                var lastScore = 0
+                var lastShards = 0
+                for step in 0..<400 {
+                    switch (step * 7 + seed) % 6 {
+                    case 0: engine.move(dx: 1)
+                    case 1: engine.move(dx: -1)
+                    case 2: engine.rotate(clockwise: step % 2 == 0)
+                    case 3: engine.hardDrop()
+                    case 4: engine.pulse()
+                    default: engine.softDropStep()
+                    }
+                    advance(engine, by: 0.05)
+                    if let piece = engine.current {
+                        XCTAssertTrue(engine.board.canPlace(piece))
+                        if let ghost = engine.ghost {
+                            XCTAssertEqual(engine.board.dropPosition(of: piece), ghost)
+                        }
+                    }
+                    XCTAssertEqual(engine.board.cells.count, Board.sectors * Board.rings)
+                    XCTAssertGreaterThanOrEqual(engine.score, lastScore)
+                    XCTAssertGreaterThanOrEqual(engine.shards, lastShards)
+                    XCTAssertTrue((0...GameEngine.pulseCost).contains(engine.charge))
+                    lastScore = engine.score
+                    lastShards = engine.shards
                     if case .over = engine.phase { break }
-                    random = random &* 6364136223846793005 &+ 1
-                    switch (random >> 32) % 9 {
-                    case 0: engine.move(dx: -1)
-                    case 1: engine.move(dx: 1)
-                    case 2: engine.rotate(clockwise: true)
-                    case 3: engine.rotate(clockwise: false)
-                    case 4: engine.hardDrop()
-                    case 5: engine.hold()
-                    case 6: engine.softDropStep()
-                    case 7:
-                        let elapsed = engine.elapsed
-                        engine.pause()
-                        engine.update(deltaTime: 2)
-                        XCTAssertEqual(engine.elapsed, elapsed)
-                        engine.resume()
-                    default: break
-                    }
-                    engine.update(deltaTime: 0.05)
-                    XCTAssertEqual(engine.board.cells.count, Board.rows * Board.columns)
-                    XCTAssertEqual(engine.preview.count, RandomBag.previewCount)
-                    XCTAssertGreaterThanOrEqual(engine.score, previousScore)
-                    XCTAssertGreaterThanOrEqual(engine.lines, previousLines)
-                    if let piece = engine.current { XCTAssertTrue(engine.board.canPlace(piece)) }
-                    if let ghost = engine.ghost, let piece = engine.current {
-                        XCTAssertEqual(ghost, engine.board.hardDropPosition(of: piece))
-                    }
-                    previousScore = engine.score
-                    previousLines = engine.lines
                 }
             }
         }
     }
-
 }

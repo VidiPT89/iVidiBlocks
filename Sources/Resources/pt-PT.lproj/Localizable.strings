@@ -1,6 +1,6 @@
 /* Identidade da app */
 "app.name" = "iVidiBlocks";
-"app.tagline" = "Empilha. Limpa. Repete.";
+"app.tagline" = "Roda o poço. Funde os anéis.";
 
 /* Apresentação */
 "splash.developedBy" = "Desenvolvido por David Arsénio Martins";
@@ -21,31 +21,29 @@
 "menu.replaceSaved.message" = "A partida por terminar será descartada.";
 
 /* Modos de jogo */
-"mode.marathon" = "Maratona";
-"mode.marathon.desc" = "Sem fim. A velocidade nunca para de subir.";
-"mode.sprint" = "Sprint";
-"mode.sprint.desc" = "Limpa 40 linhas o mais depressa que conseguires.";
-"mode.ultra" = "Ultra";
-"mode.ultra.desc" = "Faz o máximo de pontos em 3 minutos.";
+"mode.orbit" = "Órbita";
+"mode.orbit.desc" = "Sem fim. O poço gira cada vez mais depressa.";
+"mode.target" = "Meta";
+"mode.target.desc" = "Limpa 160 fragmentos o mais depressa que conseguires.";
+"mode.blitz" = "Blitz";
+"mode.blitz.desc" = "Faz o máximo de pontos em 2 minutos.";
 
 /* HUD */
 "hud.score" = "Pontos";
 "hud.level" = "Nível";
-"hud.lines" = "Linhas";
+"hud.shards" = "Fragmentos";
 "hud.time" = "Tempo";
-"hud.hold" = "Reserva";
+"hud.core" = "Núcleo";
+"hud.coreReady" = "Pulso pronto";
 "hud.next" = "Seguintes";
-"hud.combo" = "Combo";
-"hud.b2b" = "Seguidas";
+"hud.chain" = "Cadeia";
 
 /* Faixas durante o jogo */
-"game.single" = "SIMPLES";
-"game.double" = "DUPLO";
-"game.triple" = "TRIPLO";
-"game.quad" = "QUAD";
-"game.tspin" = "T-SPIN";
-"game.tspinMini" = "T-SPIN MINI";
-"game.perfectClear" = "ECRÃ LIMPO";
+"game.ring" = "ANEL";
+"game.rings" = "MULTI-ANEL";
+"game.arc" = "FUSÃO EM ARCO";
+"game.chain" = "CADEIA";
+"game.pulse" = "PULSO DO NÚCLEO";
 "game.levelUp" = "SOBE DE NÍVEL";
 "game.ready" = "PRONTO";
 
@@ -71,7 +69,7 @@
 "settings.theme.light" = "Claro";
 "settings.theme.dark" = "Escuro";
 "settings.gameplay" = "Jogo";
-"settings.ghost" = "Peça fantasma";
+"settings.ghost" = "Guia de queda";
 "settings.das" = "Atraso até repetir";
 "settings.arr" = "Ritmo de repetição";
 "settings.controls" = "Controlos";
@@ -96,38 +94,39 @@
 "stats.records" = "Recordes";
 "stats.lifetime" = "Acumulado";
 "stats.games" = "Jogos feitos";
-"stats.pieces" = "Peças colocadas";
-"stats.lines" = "Linhas limpas";
-"stats.quads" = "Quádruplas";
-"stats.tspins" = "T-spins";
+"stats.pieces" = "Fragmentos colocados";
+"stats.shards" = "Fragmentos limpos";
+"stats.rings" = "Anéis fechados";
+"stats.arcs" = "Arcos fundidos";
+"stats.pulses" = "Pulsos do núcleo";
 "stats.timePlayed" = "Tempo de jogo";
-"stats.bestCombo" = "Melhor combo";
+"stats.bestChain" = "Cadeia mais longa";
 "stats.empty" = "Joga uma partida para começares o teu histórico.";
 
 /* Como jogar */
 "howto.title" = "Como jogar";
 "howto.goal" = "Objetivo";
-"howto.goal.body" = "As peças caem do topo. Preenche uma linha inteira para a limpares. O jogo acaba quando a pilha chega ao topo.";
+"howto.goal.body" = "Os fragmentos caem da borda para o núcleo. Fecha um anel inteiro, ou junta cinco células da mesma cor ao longo de um anel, para os limpar. Tudo o que está por fora escorrega para dentro. O jogo acaba quando um fragmento já não consegue entrar no poço.";
 "howto.controls" = "Controlos";
-"howto.controls.move" = "Arrasta para a esquerda ou direita para mover";
-"howto.controls.rotate" = "Toca num dos lados do tabuleiro para rodar";
-"howto.controls.soft" = "Arrasta para baixo para descer mais depressa";
-"howto.controls.hard" = "Desliza rápido para baixo para largar de imediato";
-"howto.controls.hold" = "Desliza para cima para guardar a peça para depois";
+"howto.controls.move" = "Arrasta para a esquerda ou direita para rodar o poço por baixo do fragmento";
+"howto.controls.rotate" = "Toca num dos lados do tabuleiro para virar o fragmento";
+"howto.controls.soft" = "Arrasta para baixo para cair mais depressa";
+"howto.controls.hard" = "Desliza rápido para baixo para cair direto ao núcleo";
+"howto.controls.pulse" = "Desliza para cima, ou toca no núcleo, para disparar um pulso carregado";
 "howto.scoring" = "Pontuação";
-"howto.scoring.body" = "Limpar quatro linhas de uma vez é uma quádrupla e vale muito mais do que quatro linhas simples. Rodar uma peça T para dentro de um buraco apertado faz um T-spin. Encadeia essas jogadas difíceis seguidas e ganhas mais 1,5×.";
+"howto.scoring.body" = "Cada célula limpa dá pontos, um anel fechado dá um bónus e um arco fundido dá outro. Quando as células escorregam para dentro e formam uma nova limpeza, isso é uma cadeia: cada elo multiplica o passo inteiro. As células limpas também carregam o núcleo.";
 "howto.tips" = "Sugestões";
-"howto.tips.body" = "Mantém a pilha plana e deixa uma coluna livre para a peça I. Usa a reserva para guardar uma peça que ainda não consegues encaixar. O contorno esbatido mostra onde a peça vai cair. Ainda não conheces estas jogadas? O Treino guiado, no menu, ensina cada uma.";
+"howto.tips.body" = "Constrói arcos de uma só cor enquanto esperas que um anel feche. Deixa pares da mesma cor por fora de um arco quase pronto para preparar cadeias. Guarda o pulso para as emergências junto à borda. O contorno esbatido mostra onde o fragmento vai cair. O Treino guiado, no menu, ensina cada ideia.";
 
 
 /* Controlos no ecrã (VoiceOver) */
-"controls.left" = "Mover para a esquerda";
-"controls.right" = "Mover para a direita";
-"controls.rotateCW" = "Rodar para a direita";
-"controls.rotateCCW" = "Rodar para a esquerda";
-"controls.softDrop" = "Descer mais depressa";
-"controls.hardDrop" = "Largar de imediato";
-"controls.hold" = "Guardar peça";
+"controls.left" = "Rodar o poço para a esquerda";
+"controls.right" = "Rodar o poço para a direita";
+"controls.rotateCW" = "Virar o fragmento para a direita";
+"controls.rotateCCW" = "Virar o fragmento para a esquerda";
+"controls.softDrop" = "Cair mais depressa";
+"controls.hardDrop" = "Cair até ao núcleo";
+"controls.pulse" = "Pulso do núcleo";
 
 /* Genérico */
 "common.close" = "Fechar";
@@ -135,23 +134,21 @@
 /* Treino guiado */
 "menu.practice" = "Treino guiado";
 "practice.title" = "Treino guiado";
-"practice.intro" = "Sete exercícios curtos, em tabuleiros preparados para cada técnica, da primeira queda às quádruplas seguidas. Cada um dá só as peças de que precisas.";
+"practice.intro" = "Seis exercícios curtos, em poços preparados para cada ideia, da primeira queda às cadeias e ao pulso do núcleo. Cada um dá só os fragmentos de que precisas.";
 "practice.done" = "Concluído";
 "practice.passed" = "Muito bem!";
 "practice.failed" = "Não foi desta";
 "practice.next" = "Exercício seguinte";
 "practice.retry" = "Tentar outra vez";
-"lesson.drop" = "Queda rápida";
-"lesson.drop.hint" = "Desliza para baixo, ou carrega no botão de queda rápida, para mandar a peça I direta para o buraco.";
-"lesson.rotate" = "Rodar e mover";
-"lesson.rotate.hint" = "Toca no tabuleiro para pôr a peça I de pé, arrasta-a até à parede direita e larga-a.";
-"lesson.hold" = "Reservar";
-"lesson.hold.hint" = "A peça O não cabe. Desliza para cima para a reservar e larga a peça I no buraco.";
-"lesson.quad" = "Quádrupla";
-"lesson.quad.hint" = "Põe a peça I de pé no poço da esquerda para limpar quatro linhas de uma vez.";
-"lesson.tspin" = "T-spin";
-"lesson.tspin.hint" = "Toca no lado esquerdo para rodar o T, deixa-o assentar no buraco e volta a tocar no lado esquerdo antes de fixar.";
-"lesson.combo" = "Combo";
-"lesson.combo.hint" = "Larga cada peça O no buraco da esquerda. Três limpezas seguidas fazem um combo.";
-"lesson.b2b" = "Seguidas";
-"lesson.b2b.hint" = "Limpa quatro linhas com cada peça I. Duas quádruplas seguidas dão o bónus de 1,5×.";
+"lesson.drop" = "Cair até ao núcleo";
+"lesson.drop.hint" = "Desliza para baixo, ou carrega no botão de queda, para mandar o fragmento para o buraco e fechar o anel.";
+"lesson.spin" = "Rodar o poço";
+"lesson.spin.hint" = "O buraco está do outro lado. Arrasta para o lado para rodar o poço até o buraco ficar por baixo do fragmento e larga-o.";
+"lesson.rotate" = "Virar um fragmento";
+"lesson.rotate.hint" = "Toca no tabuleiro para pôr o fragmento de pé, roda o poço até ao buraco estreito e fecha dois anéis de uma vez.";
+"lesson.arc" = "Fundir um arco";
+"lesson.arc.hint" = "Cinco células da mesma cor lado a lado fundem-se e desaparecem, mesmo num anel incompleto. Larga o fragmento âmbar junto aos outros três.";
+"lesson.chain" = "Reação em cadeia";
+"lesson.chain.hint" = "Funde o arco âmbar. As células azuis por cima escorregam para dentro e formam um segundo arco, com bónus de cadeia.";
+"lesson.pulse" = "Pulso do núcleo";
+"lesson.pulse.hint" = "O núcleo está carregado. Desliza para cima, ou toca no núcleo a brilhar, para apagar os dois anéis interiores.";

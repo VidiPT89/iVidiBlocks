@@ -8,7 +8,7 @@ import Foundation
 /// free of any storage or UI dependency.
 struct GameConfig {
     var das: TimeInterval = 0.133
-    var arr: TimeInterval = 0.033
+    var arr: TimeInterval = 0.05
     var ghostEnabled: Bool = true
     var startLevel: Int = 1
 
@@ -21,15 +21,18 @@ enum GameEvent: Equatable {
     case moved
     case rotated(kicked: Bool)
     case rotationFailed
-    case softDropped(rows: Int)
+    case softDropped(rings: Int)
     /// Carries the landed piece because by the time the renderer drains this
     /// the engine has already locked it and cleared `current`.
-    case hardDropped(rows: Int, from: Int, piece: Piece)
+    case hardDropped(rings: Int, from: Int, piece: Piece)
     case locked(piece: Piece)
-    case linesCleared(rows: [Int], outcome: ClearOutcome)
+    /// Cells about to clear, with their colours, so the renderer can burst
+    /// them before the board changes underneath.
+    case cleared(cells: [Point], colors: [ShardColor], outcome: ClearOutcome)
     case levelUp(Int)
-    case holdSwapped
-    case holdRejected
+    case coreCharged
+    case pulsed(cells: [Point], points: Int)
+    case pulseRejected
     case gameOver(reason: GameOverReason)
 }
 
@@ -38,7 +41,7 @@ extension GameOverReason: Equatable {}
 enum GamePhase: Equatable {
     case ready
     case playing
-    /// Gravity is frozen while completed rows play their clear animation.
+    /// Gravity is frozen while cleared cells play their animation.
     case clearing
     case paused
     case over(GameOverReason)
@@ -47,10 +50,11 @@ enum GamePhase: Equatable {
 /// Accumulated counters for one run, folded into lifetime stats at the end.
 struct RunStats: Codable, Equatable {
     var piecesPlaced = 0
-    var linesCleared = 0
-    var quads = 0
-    var tSpins = 0
-    var maxCombo = 0
+    var shardsCleared = 0
+    var ringsCleared = 0
+    var arcsFused = 0
+    var pulses = 0
+    var maxChain = 0
 }
 
 /// Everything needed to put an unfinished run back where it was left, so
@@ -60,27 +64,25 @@ struct RunStats: Codable, Equatable {
 struct GameSnapshot: Codable, Equatable {
     /// Bumped whenever the layout changes. A file written by another version
     /// is discarded rather than half-read into the engine.
-    static let currentVersion = 1
+    static let currentVersion = 2
 
     var version = GameSnapshot.currentVersion
     var mode: GameMode
     var startLevel: Int
-    var cells: [TetrominoType?]
-    /// `nil` only while completed rows are waiting for their clear.
+    var cells: [ShardColor?]
+    /// `nil` only while cleared cells are waiting for their animation.
     var current: Piece?
-    var holdPiece: TetrominoType?
-    var holdUsed: Bool
-    var queue: [TetrominoType]
-    var pendingClearRows: [Int]
+    /// The sector at the top of the well, for when there is no piece.
+    var aim: Int
+    var queue: [Shard]
+    var pendingClear: [Point]
+    var chain: Int
+    var charge: Int
     var score: Int
-    var lines: Int
+    var shards: Int
     var level: Int
-    var combo: Int
-    var backToBack: Bool
     var elapsed: TimeInterval
     var stats: RunStats
     var lockResets: Int
-    var lowestRowReached: Int
-    var lastActionWasRotation: Bool
-    var lastKickIndex: Int
+    var lowestRingReached: Int
 }

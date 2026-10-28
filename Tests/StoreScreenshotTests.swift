@@ -19,25 +19,23 @@ final class StoreScreenshotTests: XCTestCase {
         Device(name: "ipad", points: CGSize(width: 1032, height: 1376), scale: 2)
     ]
 
-    /// A Marathon run well under way: a colourful stack with the I piece
-    /// lined up over its well.
+    /// An Orbit run well under way: a colourful well with a bent shard on
+    /// its way in and the core two-thirds charged.
     private func runInProgress() throws -> GameSnapshot {
-        let rows = ["LLLJJSSOO.", "LZZJTSSOO.", "IZZJTTTLL.",
-                    "IOOSSTZZL.", "IOO.SSJZZ.", "I....JJJ.."]
-        let types: [Character: TetrominoType] = ["I": .i, "O": .o, "T": .t, "S": .s,
-                                                 "Z": .z, "J": .j, "L": .l]
-        var cells = [TetrominoType?](repeating: nil, count: Board.columns * Board.rows)
-        for (offset, row) in rows.enumerated() {
-            let y = Board.rows - 1 - offset
-            for (x, mark) in row.enumerated() { cells[y * Board.columns + x] = types[mark] }
+        let rings = ["eatteaat.ettaeat", "taeat.ettaa.teae",
+                     "at.e.aatt..eat..", "ea.t.a.t...at..."]
+        let colors: [Character: ShardColor] = ["e": .ember, "a": .amber, "t": .tide]
+        var board = Board()
+        for (offset, ring) in rings.enumerated() {
+            for (x, mark) in ring.enumerated() { board[x, Board.rings - 1 - offset] = colors[mark] }
         }
-        let piece = Piece(type: .i, state: .right, origin: Point(x: 7, y: 6))
-        let saved = GameSnapshot(mode: .marathon, startLevel: 1, cells: cells, current: piece,
-                                 holdPiece: .t, holdUsed: false, queue: [.t, .s, .l, .j, .o],
-                                 pendingClearRows: [], score: 48_250, lines: 47, level: 5,
-                                 combo: 2, backToBack: true, elapsed: 512,
-                                 stats: RunStats(), lockResets: 0, lowestRowReached: 6,
-                                 lastActionWasRotation: false, lastKickIndex: 0)
+        XCTAssertTrue(board.scan().isEmpty)
+        let piece = Piece(shard: Shard(shape: .bend, color: .tide), origin: Point(x: 2, y: 4))
+        let saved = GameSnapshot(mode: .orbit, startLevel: 1, cells: board.cells, current: piece,
+                                 aim: 2, queue: Array(Shard.all.prefix(6)),
+                                 pendingClear: [], chain: 0, charge: 24, score: 18_420,
+                                 shards: 150, level: ScoreCalculator.level(forTotalShards: 150),
+                                 elapsed: 512, stats: RunStats(), lockResets: 0, lowestRingReached: 4)
         XCTAssertNotNil(GameEngine(restoring: saved))
         return saved
     }
@@ -56,18 +54,18 @@ final class StoreScreenshotTests: XCTestCase {
             loc.setLanguage(language)
             let temp = FileManager.default.temporaryDirectory
             let stats = StatsStore(fileURL: temp.appendingPathComponent("shots-\(UUID().uuidString).json"))
-            stats.submit(mode: .marathon, score: 48_250, lines: 47, level: 5, time: 512,
+            stats.submit(mode: .orbit, score: 18_420, shards: 150, level: 4, time: 512,
                          reason: .topOut, runStats: RunStats())
-            stats.submit(mode: .sprint, score: 9_840, lines: 40, level: 1, time: 92.41,
+            stats.submit(mode: .target, score: 9_840, shards: 160, level: 1, time: 141.6,
                          reason: .targetReached, runStats: RunStats())
-            stats.submit(mode: .ultra, score: 61_200, lines: 38, level: 1, time: 180,
+            stats.submit(mode: .blitz, score: 21_300, shards: 131, level: 1, time: 120,
                          reason: .timeUp, runStats: RunStats())
             for lesson in Lesson.all.prefix(3) { stats.completeLesson(lesson) }
             let savedGames = SavedGameStore(fileURL: temp.appendingPathComponent("shots-run-\(UUID().uuidString).json"))
             let audio = AudioManager()
             let haptics = HapticsManager()
 
-            let model = GameViewModel(mode: .marathon, settings: settings, stats: stats,
+            let model = GameViewModel(mode: .orbit, settings: settings, stats: stats,
                                       savedGames: savedGames, audio: audio, haptics: haptics,
                                       localization: loc, resuming: try runInProgress())
             model.resume()
@@ -75,7 +73,7 @@ final class StoreScreenshotTests: XCTestCase {
             let screens: [(String, AnyView)] = [
                 ("1-game", AnyView(GameView(model: model, onExit: {}))),
                 ("2-practice", AnyView(PracticeView(onStart: { _ in }))),
-                ("3-tspin", AnyView(GameView(mode: .marathon, settings: settings, stats: stats,
+                ("3-chain", AnyView(GameView(mode: .orbit, settings: settings, stats: stats,
                                              savedGames: savedGames, audio: audio, haptics: haptics,
                                              localization: loc, lesson: Lesson.all[4], onExit: {}))),
                 ("4-menu", AnyView(ZStack {

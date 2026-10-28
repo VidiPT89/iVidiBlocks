@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// A single strip above the board: hold on the left, the run counters in
-/// the middle, the next queue on the right. Laid out horizontally so the
-/// playfield itself gets the whole width of the screen.
+/// A single strip above the well: the core charge on the left, the run
+/// counters in the middle, the next queue on the right. Laid out
+/// horizontally so the well itself gets the whole width of the screen.
 struct HUDView: View {
     @ObservedObject var model: GameViewModel
     @EnvironmentObject private var loc: LocalizationManager
@@ -10,32 +10,40 @@ struct HUDView: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
-            holdSlot
+            coreSlot
             counters
             nextQueue
         }
     }
 
-    // MARK: Hold
+    // MARK: Core
 
-    private var holdSlot: some View {
-        Button(action: model.hold) {
-            panel(title: loc.string(.hudHold)) {
+    /// The pulse charge as a ring. Tapping it fires the pulse once full.
+    private var coreSlot: some View {
+        Button(action: model.pulse) {
+            panel(title: loc.string(.hudCore)) {
                 ZStack {
-                    if let hold = model.holdPiece {
-                        PieceThumbnail(type: hold, cellSize: 10,
-                                       showGlyph: settings.colorBlindMode)
-                            .transition(.scale.combined(with: .opacity))
-                    }
+                    Circle()
+                        .stroke(Color.textSecondary.opacity(0.25), lineWidth: 4)
+                    Circle()
+                        .trim(from: 0, to: model.charge)
+                        .stroke(model.canPulse ? AnyShapeStyle(.brandGradient)
+                                               : AnyShapeStyle(Color.brandOrange.opacity(0.8)),
+                                style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                    Image(systemName: "dot.radiowaves.left.and.right")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(model.canPulse ? Color.brandAmber : Color.textSecondary)
                 }
-                .frame(width: 44, height: 26)
-                .animation(.spring(response: 0.3, dampingFraction: 0.7), value: model.holdPiece)
+                .frame(width: 26, height: 26)
+                .animation(.easeOut(duration: 0.25), value: model.charge)
             }
         }
         .buttonStyle(.plain)
-        .disabled(!model.canHold)
-        .opacity(model.canHold ? 1 : 0.45)
-        .accessibilityLabel(loc.string(.hudHold))
+        .disabled(!model.canPulse)
+        .accessibilityLabel(loc.string(.controlsPulse))
+        .accessibilityValue(model.canPulse ? loc.string(.hudCoreReady)
+                                           : "\(Int(model.charge * 100))%")
     }
 
     // MARK: Counters
@@ -61,16 +69,16 @@ struct HUDView: View {
 
     /// Each mode leads with the number that actually decides the run.
     private var secondaryCounters: [(String, String, Bool)] {
-        if let remaining = model.linesRemaining {
-            return [(loc.string(.hudLines), "\(remaining)", false),
+        if let remaining = model.shardsRemaining {
+            return [(loc.string(.hudShards), "\(remaining)", false),
                     (loc.string(.hudTime), TimeFormat.clock(model.elapsed), false)]
         }
         if let remaining = model.timeRemaining {
             return [(loc.string(.hudTime), TimeFormat.countdown(remaining), remaining < 15),
-                    (loc.string(.hudLines), "\(model.lines)", false)]
+                    (loc.string(.hudShards), "\(model.shards)", false)]
         }
         return [(loc.string(.hudLevel), "\(model.level)", false),
-                (loc.string(.hudLines), "\(model.lines)", false)]
+                (loc.string(.hudShards), "\(model.shards)", false)]
     }
 
     private func counter(_ label: String, value: String,
@@ -79,6 +87,8 @@ struct HUDView: View {
             Text(label.uppercased())
                 .font(.system(size: 9, weight: .bold, design: .rounded))
                 .tracking(0.8)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
                 .foregroundStyle(Color.textSecondary)
             Text(value)
                 .font(.counter(prominent ? 26 : 15))
@@ -95,16 +105,16 @@ struct HUDView: View {
     @ViewBuilder
     private var chains: some View {
         HStack(spacing: 6) {
-            if model.backToBack {
-                chip(text: loc.string(.hudBackToBack), color: .brandAmber)
+            if model.canPulse {
+                chip(text: loc.string(.hudCoreReady), color: .brandAmber)
             }
-            if model.combo > 0 {
-                chip(text: "\(loc.string(.hudCombo)) \(model.combo)", color: .brandOrange)
+            if model.chain > 1 {
+                chip(text: "\(loc.string(.hudChain)) ×\(model.chain)", color: .brandOrange)
             }
         }
-        .frame(height: model.backToBack || model.combo > 0 ? nil : 0)
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: model.combo)
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: model.backToBack)
+        .frame(height: model.canPulse || model.chain > 1 ? nil : 0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: model.chain)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: model.canPulse)
     }
 
     private func chip(text: String, color: Color) -> some View {
@@ -124,8 +134,8 @@ struct HUDView: View {
     private var nextQueue: some View {
         panel(title: loc.string(.hudNext)) {
             VStack(spacing: 6) {
-                ForEach(Array(model.preview.enumerated()), id: \.offset) { index, type in
-                    PieceThumbnail(type: type,
+                ForEach(Array(model.preview.enumerated()), id: \.offset) { index, shard in
+                    PieceThumbnail(shard: shard,
                                    cellSize: index == 0 ? 9 : 7,
                                    showGlyph: settings.colorBlindMode)
                         .frame(width: 44, height: index == 0 ? 20 : 16)
@@ -158,7 +168,7 @@ struct HUDView: View {
     }
 }
 
-/// The caption that slides in after a quad, T-spin or perfect clear.
+/// The caption that slides in after a ring, an arc, a chain or a pulse.
 struct BannerView: View {
     let banner: Banner
 

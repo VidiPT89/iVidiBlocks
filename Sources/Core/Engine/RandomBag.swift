@@ -18,10 +18,13 @@ struct RandomBag {
     /// this many, so queueing more would only be waste.
     static let previewCount = 4
 
-    private var queue: [TetrominoType] = []
+    private(set) var queue: [TetrominoType] = []
     private var random: PieceRandomSource
 
-    init(random: PieceRandomSource = SystemPieceRandom()) {
+    /// - Parameter queue: pieces already dealt, kept when a saved run is
+    ///   restored so the preview the player saw is still what comes next.
+    init(queue: [TetrominoType] = [], random: PieceRandomSource = SystemPieceRandom()) {
+        self.queue = queue
         self.random = random
         refillIfNeeded()
     }

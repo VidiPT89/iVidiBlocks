@@ -5,6 +5,7 @@ struct iTetrisApp: App {
     @StateObject private var localization = LocalizationManager()
     @StateObject private var settings = SettingsStore()
     @StateObject private var stats = StatsStore()
+    @StateObject private var savedGames = SavedGameStore()
     @StateObject private var audio = AudioManager()
     @StateObject private var haptics = HapticsManager()
 
@@ -16,6 +17,7 @@ struct iTetrisApp: App {
                 .environmentObject(localization)
                 .environmentObject(settings)
                 .environmentObject(stats)
+                .environmentObject(savedGames)
                 .environmentObject(audio)
                 .environmentObject(haptics)
                 .preferredColorScheme(settings.theme.colorScheme)

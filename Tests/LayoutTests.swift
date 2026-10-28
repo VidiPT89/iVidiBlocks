@@ -15,6 +15,8 @@ final class LayoutTests: XCTestCase {
         loc.setLanguage(.pt)
         let stats = StatsStore(fileURL: FileManager.default.temporaryDirectory
             .appendingPathComponent("layout-\(UUID().uuidString).json"))
+        let savedGames = SavedGameStore(fileURL: FileManager.default.temporaryDirectory
+            .appendingPathComponent("layout-run-\(UUID().uuidString).json"))
         let audio = AudioManager()
         let haptics = HapticsManager()
         for (name, size, scheme, handedness) in [
@@ -23,7 +25,7 @@ final class LayoutTests: XCTestCase {
         ] {
             settings.handedness = handedness
             let root = GameView(mode: .marathon, settings: settings, stats: stats,
-                                audio: audio, haptics: haptics, localization: loc, onExit: {})
+                                savedGames: savedGames, audio: audio, haptics: haptics, localization: loc, onExit: {})
                 .environmentObject(settings).environmentObject(loc).environmentObject(audio)
                 .environment(\.colorScheme, scheme)
             let controller = UIHostingController(rootView: root)

@@ -7,12 +7,14 @@ struct AppRouter: View {
     @EnvironmentObject private var localization: LocalizationManager
     @EnvironmentObject private var settings: SettingsStore
     @EnvironmentObject private var stats: StatsStore
+    @EnvironmentObject private var savedGames: SavedGameStore
     @EnvironmentObject private var audio: AudioManager
     @EnvironmentObject private var haptics: HapticsManager
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var showingSplash = true
     @State private var activeMode: GameMode?
+    @State private var resumingRun: GameSnapshot?
 
     var body: some View {
         ZStack {
@@ -27,9 +29,11 @@ struct AppRouter: View {
                 GameView(mode: mode,
                          settings: settings,
                          stats: stats,
+                         savedGames: savedGames,
                          audio: audio,
                          haptics: haptics,
                          localization: localization,
+                         resuming: resumingRun,
                          onExit: { activeMode = nil })
                     .id(mode)
                     .transition(.asymmetric(
@@ -37,7 +41,8 @@ struct AppRouter: View {
                         removal: .opacity.combined(with: .scale(scale: 0.97))
                     ))
             } else {
-                MainMenuView { mode in
+                MainMenuView { mode, saved in
+                    resumingRun = saved
                     withAnimation(.easeInOut(duration: 0.35)) { activeMode = mode }
                 }
                 .transition(.opacity)

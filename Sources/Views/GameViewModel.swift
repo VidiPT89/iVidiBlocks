@@ -56,6 +56,7 @@ final class GameViewModel: ObservableObject {
 
     private let settings: SettingsStore
     private let stats: StatsStore
+    private let savedGames: SavedGameStore
     private let audio: AudioManager
     private let haptics: HapticsManager
     private let localization: LocalizationManager
@@ -65,16 +66,24 @@ final class GameViewModel: ObservableObject {
     init(mode: GameMode,
          settings: SettingsStore,
          stats: StatsStore,
+         savedGames: SavedGameStore,
          audio: AudioManager,
          haptics: HapticsManager,
-         localization: LocalizationManager) {
+         localization: LocalizationManager,
+         resuming saved: GameSnapshot? = nil) {
         self.mode = mode
         self.settings = settings
         self.stats = stats
+        self.savedGames = savedGames
         self.audio = audio
         self.haptics = haptics
         self.localization = localization
-        self.engine = GameEngine(mode: mode, config: settings.gameConfig)
+        if let saved, saved.mode == mode,
+           let restored = GameEngine(restoring: saved, config: settings.gameConfig) {
+            engine = restored
+        } else {
+            engine = GameEngine(mode: mode, config: settings.gameConfig)
+        }
 
         haptics.enabled = settings.hapticsEnabled
         audio.sfxEnabled = settings.sfxEnabled
@@ -83,12 +92,20 @@ final class GameViewModel: ObservableObject {
         preview = engine.preview
         timeRemaining = engine.timeRemaining
         linesRemaining = engine.linesRemaining
+
+        // A restored run waits on the pause screen until the player is ready.
+        if engine.phase == .paused {
+            isPaused = true
+            audio.pauseAll()
+            syncFromEngine(engine)
+        }
     }
 
     /// Throws the current run away and builds a fresh engine with whatever
     /// the settings say now.
     func restart() {
         bannerDismiss?.cancel()
+        savedGames.clear()
         heldDirections = []
         canHold = false
         engine = GameEngine(mode: mode, config: settings.gameConfig)
@@ -244,10 +261,23 @@ final class GameViewModel: ObservableObject {
     func hardDrop() { engine.hardDrop() }
     func hold() { engine.hold() }
 
+    // MARK: Saving
+
+    /// Keeps the run for the menu's Continue card. A run still counting in,
+    /// or one already over, has nothing worth keeping.
+    func saveProgress() {
+        if result == nil, let snapshot = engine.snapshot() {
+            savedGames.save(snapshot)
+        } else {
+            savedGames.clear()
+        }
+    }
+
     // MARK: Finishing
 
     private func finish(reason: GameOverReason) {
         guard result == nil else { return }
+        savedGames.clear()
         audio.play(.gameOver)
 
         let beaten = stats.submit(mode: mode,

@@ -27,6 +27,8 @@ targets:
       properties:
         UILaunchScreen: {}
         CFBundleDisplayName: iTetris
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         UIRequiresFullScreen: true

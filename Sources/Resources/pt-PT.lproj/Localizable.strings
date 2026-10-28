@@ -13,6 +13,12 @@
 "menu.about" = "Sobre";
 "menu.best" = "Recorde";
 "menu.noRecord" = "Ainda sem recorde";
+"menu.savedRun" = "Partida por terminar";
+"menu.continue" = "Continuar";
+"menu.discard" = "Descartar";
+"menu.newGame" = "Nova partida";
+"menu.replaceSaved" = "Começar uma nova partida?";
+"menu.replaceSaved.message" = "A partida por terminar será descartada.";
 
 /* Modos de jogo */
 "mode.marathon" = "Maratona";

@@ -48,3 +48,20 @@ app termination, with validated versioned state and explicit resume/discard cont
 A guided practice mode could follow to teach rotation, hold, combos and T-spins.
 Neither feature was implemented in this review. Cloud services or extra game modes
 would add scope before these everyday usability improvements are finished.
+
+## Follow-up: saved runs
+
+The recommended persistence was implemented afterwards. An unfinished run is saved
+as versioned JSON when the app leaves the foreground or the player quits to the
+menu. The menu then offers Continue or Discard; starting another mode asks before
+discarding it. A restored run opens on the pause screen with the board, piece,
+hold, queue, counters, clock and pending clear intact. DAS, ARR and the ghost follow
+the current settings. Files from another version, or states the engine could not
+have produced, are deleted instead of being offered. Finishing or restarting a run
+removes the save. Guided practice remains a possible future addition.
+
+Verification: 145 XCTest tests pass on iPhone 17 Pro, iOS 26.5 Simulator, including
+round-trip, mid-clear, deterministic continuation and rejected-file cases. Release
+generic iOS build (signing disabled) and static analysis pass. Two earlier runs failed
+before testing because the simulator refused to launch the app while still booting.
+Resuming after the app is closed still needs a physical-device check.

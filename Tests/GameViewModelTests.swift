@@ -5,7 +5,9 @@ import XCTest
 final class GameViewModelTests: XCTestCase {
     private static let audio = AudioManager()
     private static let haptics = HapticsManager()
-    private func makeModel(_ mode: GameMode = .marathon) -> (GameViewModel, StatsStore) {
+    private func makeModel(_ mode: GameMode = .marathon,
+                           savedGames: SavedGameStore? = nil,
+                           resuming saved: GameSnapshot? = nil) -> (GameViewModel, StatsStore) {
         let defaults = UserDefaults(suiteName: UUID().uuidString)!
         let settings = SettingsStore(defaults: defaults)
         settings.musicEnabled = false
@@ -13,9 +15,13 @@ final class GameViewModelTests: XCTestCase {
         settings.hapticsEnabled = false
         let stats = StatsStore(fileURL: FileManager.default.temporaryDirectory
             .appendingPathComponent("model-\(UUID().uuidString).json"))
+        let store = savedGames ?? SavedGameStore(fileURL: FileManager.default.temporaryDirectory
+            .appendingPathComponent("model-run-\(UUID().uuidString).json"))
         let model = GameViewModel(mode: mode, settings: settings, stats: stats,
+                                  savedGames: store,
                                   audio: Self.audio, haptics: Self.haptics,
-                                  localization: LocalizationManager(defaults: defaults))
+                                  localization: LocalizationManager(defaults: defaults),
+                                  resuming: saved)
         return (model, stats)
     }
 
@@ -98,5 +104,52 @@ final class GameViewModelTests: XCTestCase {
         let detail = try XCTUnwrap(model.banner?.detail)
         XCTAssertTrue(detail.contains(1300.formatted()))
         XCTAssertEqual(detail.components(separatedBy: " · ").count, 3)
+    }
+
+    // MARK: Saved runs
+
+    private func runStore() -> SavedGameStore {
+        SavedGameStore(fileURL: FileManager.default.temporaryDirectory
+            .appendingPathComponent("model-run-\(UUID().uuidString).json"))
+    }
+
+    func testSavingKeepsARunInProgressAndRestartDropsIt() async {
+        let store = runStore()
+        let (model, _) = makeModel(savedGames: store)
+        model.saveProgress()
+        XCTAssertNil(store.snapshot, "nothing to keep before the first piece")
+
+        model.engine.startImmediately()
+        model.engine.hardDrop()
+        model.pause()
+        model.saveProgress()
+        XCTAssertEqual(store.snapshot, model.engine.snapshot())
+
+        model.restart()
+        XCTAssertNil(store.snapshot)
+    }
+
+    func testAResumedRunWaitsOnThePauseScreenWithItsNumbers() async throws {
+        let (source, _) = makeModel()
+        source.engine.startImmediately()
+        source.engine.hardDrop()
+        let saved = try XCTUnwrap(source.engine.snapshot())
+
+        let (model, _) = makeModel(resuming: saved)
+        XCTAssertTrue(model.isPaused)
+        XCTAssertEqual(model.score, saved.score)
+        XCTAssertNil(model.countdownText)
+        model.resume()
+        XCTAssertEqual(model.engine.phase, .playing)
+    }
+
+    func testFinishingARunDropsTheSave() async {
+        let store = runStore()
+        let (model, _) = makeModel(savedGames: store)
+        model.engine.startImmediately()
+        model.saveProgress()
+        XCTAssertNotNil(store.snapshot)
+        model.handle(.gameOver(reason: .topOut), from: model.engine)
+        XCTAssertNil(store.snapshot)
     }
 }

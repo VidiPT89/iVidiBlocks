@@ -578,7 +578,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = dev.ividi.itetris;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.ividi.ividiblocks;
 				PRODUCT_NAME = iVidiBlocks;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
@@ -675,7 +675,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = dev.ividi.itetris;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.ividi.ividiblocks;
 				PRODUCT_NAME = iVidiBlocks;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;

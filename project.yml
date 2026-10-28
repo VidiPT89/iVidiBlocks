@@ -39,8 +39,7 @@ targets:
         NSHumanReadableCopyright: Copyright © David Arsénio Martins
     settings:
       base:
-        # Kept from the first name: the App Store Connect record is tied to it.
-        PRODUCT_BUNDLE_IDENTIFIER: dev.ividi.itetris
+        PRODUCT_BUNDLE_IDENTIFIER: dev.ividi.ividiblocks
         PRODUCT_NAME: iVidiBlocks
         TARGETED_DEVICE_FAMILY: "1,2"
         SUPPORTS_MACCATALYST: false

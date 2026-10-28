@@ -3,35 +3,25 @@ import XCTest
 
 final class RandomBagTests: XCTestCase {
 
-    func testEveryBagOfSevenContainsEachPieceExactlyOnce() {
+    func testEveryBagContainsEachShapeInEachColourExactlyOnce() {
         var bag = RandomBag(random: SeededPieceRandom(seed: 42))
         for bagIndex in 0..<100 {
-            let drawn = (0..<7).map { _ in bag.next() }
-            XCTAssertEqual(Set(drawn).count, 7, "bag \(bagIndex) repeated a piece")
+            let drawn = (0..<Shard.all.count).map { _ in bag.next() }
+            XCTAssertEqual(Set(drawn), Set(Shard.all), "bag \(bagIndex) repeated a shard")
         }
     }
 
-    func testDistributionIsUniformOverManyDraws() {
-        var bag = RandomBag(random: SeededPieceRandom(seed: 7))
-        var counts: [TetrominoType: Int] = [:]
-        for _ in 0..<7000 { counts[bag.next(), default: 0] += 1 }
-
-        XCTAssertEqual(counts.count, 7)
-        for type in TetrominoType.allCases {
-            XCTAssertEqual(counts[type], 1000, "\(type) should appear exactly once per bag")
-        }
-    }
-
-    func testGapBetweenIdenticalPiecesNeverExceedsTwelve() {
+    func testNoColourGoesMissingForLong() {
         var bag = RandomBag(random: SeededPieceRandom(seed: 99))
-        var lastSeen: [TetrominoType: Int] = [:]
-        for index in 0..<7000 {
-            let piece = bag.next()
-            if let previous = lastSeen[piece] {
-                XCTAssertLessThanOrEqual(index - previous - 1, 12,
-                                         "drought of \(index - previous - 1) for \(piece)")
+        var lastSeen: [ShardColor: Int] = [:]
+        for index in 0..<6000 {
+            let color = bag.next().color
+            if let previous = lastSeen[color] {
+                // Four of a colour per bag of twelve: at worst the last one
+                // of a bag is followed by the first of the next after eight.
+                XCTAssertLessThanOrEqual(index - previous - 1, 16)
             }
-            lastSeen[piece] = index
+            lastSeen[color] = index
         }
     }
 
@@ -70,7 +60,7 @@ struct SeededPieceRandom: PieceRandomSource {
         return state
     }
 
-    mutating func shuffle(_ pieces: inout [TetrominoType]) {
+    mutating func shuffle(_ pieces: inout [Shard]) {
         guard pieces.count > 1 else { return }
         for i in stride(from: pieces.count - 1, to: 0, by: -1) {
             let j = Int(next() % UInt64(i + 1))

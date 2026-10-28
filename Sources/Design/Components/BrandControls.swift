@@ -135,14 +135,14 @@ struct SectionHeader: View {
     }
 }
 
-/// Draws one tetromino, used by the hold slot, the next queue and the
-/// decorative pieces on the menu.
+/// Draws one shard flat, used by the next queue and the decorative shards
+/// on the menu and splash.
 struct PieceThumbnail: View {
-    let type: TetrominoType
+    let shard: Shard
     var cellSize: CGFloat = 12
     var showGlyph = false
 
-    private var cells: [Point] { type.cells(in: .spawn) }
+    private var cells: [Point] { shard.shape.cells(in: .spawn) }
 
     private var bounds: (minX: Int, minY: Int, width: Int, height: Int) {
         let xs = cells.map(\.x), ys = cells.map(\.y)
@@ -160,7 +160,7 @@ struct PieceThumbnail: View {
                                   width: cellSize, height: cellSize)
                     .insetBy(dx: cellSize * 0.06, dy: cellSize * 0.06)
                 let path = Path(roundedRect: rect, cornerRadius: cellSize * 0.2)
-                context.fill(path, with: .color(Color.piece(type)))
+                context.fill(path, with: .color(Color.piece(shard.color)))
                 context.stroke(path, with: .color(.white.opacity(0.28)), lineWidth: 1)
             }
         }
@@ -168,7 +168,7 @@ struct PieceThumbnail: View {
                height: CGFloat(box.height) * cellSize)
         .overlay {
             if showGlyph {
-                Text(type.accessibilityGlyph)
+                Text(shard.color.accessibilityGlyph)
                     .font(.system(size: cellSize * 0.9, weight: .black, design: .rounded))
                     .foregroundStyle(.black.opacity(0.45))
             }

@@ -14,23 +14,27 @@ final class GameEngine {
     private(set) var board = Board()
     private(set) var current: Piece?
     private(set) var ghost: Piece?
-    private(set) var holdPiece: TetrominoType?
-    private(set) var preview: [TetrominoType] = []
+    private(set) var preview: [Shard] = []
     private(set) var phase: GamePhase = .ready
+    /// The sector at the top of the screen. New shards enter here, so the
+    /// well never snaps back between pieces.
+    private(set) var aim = 0
 
     private(set) var score = 0
-    private(set) var lines = 0
+    /// Cells cleared by rings, arcs and pulses. Drives levels and Target.
+    private(set) var shards = 0
     private(set) var level: Int
-    private(set) var combo = -1
-    private(set) var backToBack = false
+    /// Link of the cascade currently clearing, 0 when nothing is.
+    private(set) var chain = 0
+    /// Cleared cells banked towards the next pulse, up to `pulseCost`.
+    private(set) var charge = 0
     private(set) var elapsed: TimeInterval = 0
     private(set) var stats = RunStats()
-    /// Pieces drawn from the bag so far. A swap with the hold slot is not
-    /// a draw.
+    /// Shards drawn from the bag so far.
     private(set) var piecesDealt = 0
 
-    /// Rows waiting for their clear animation to finish.
-    private(set) var pendingClearRows: [Int] = []
+    /// Cells waiting for their clear animation to finish.
+    private(set) var pendingClear: [Point] = []
 
     private var events: [GameEvent] = []
     /// What to go back to when the pause ends.
@@ -46,34 +50,35 @@ final class GameEngine {
     private var lockTimer: TimeInterval = 0
     private var lockResets = 0
     private var isGrounded = false
-    private var lowestRowReached = Int.min
+    private var lowestRingReached = Int.min
 
     private var autoShift: AutoShift
-
     private var softDropping = false
-    private var holdUsedThisPiece = false
-    private var lastActionWasRotation = false
-    private var lastKickIndex = 0
 
     static let lockDelay: TimeInterval = 0.5
     static let maxLockResets = 15
     static let clearDuration: TimeInterval = 0.35
     static let readyDuration: TimeInterval = 1.2
+    static let pulseCost = 32
+    /// How many of the innermost rings a pulse wipes.
+    static let pulseRings = 2
 
     // MARK: Lifecycle
 
-    /// - Parameter board: a pre-filled playfield, used to restore a saved
-    ///   run and to set up specific situations in the tests.
+    /// - Parameter board: a pre-filled well, used to restore a saved run, to
+    ///   set up practice drills and to build specific situations in tests.
     init(mode: GameMode,
          config: GameConfig = .default,
          random: PieceRandomSource = SystemPieceRandom(),
-         board: Board = Board()) {
+         board: Board = Board(),
+         charge: Int = 0) {
         self.mode = mode
         self.config = config
         self.level = config.startLevel
         self.autoShift = AutoShift(das: config.das, arr: config.arr)
         self.bag = RandomBag(random: random)
         self.board = board
+        self.charge = min(max(charge, 0), GameEngine.pulseCost)
         self.preview = bag.preview
         self.readyTimer = GameEngine.readyDuration
     }
@@ -85,57 +90,53 @@ final class GameEngine {
                       random: PieceRandomSource = SystemPieceRandom()) {
         let mode = saved.mode
         let expectedLevel = mode.levelsUp
-            ? ScoreCalculator.level(forTotalLines: saved.lines, startingAt: saved.startLevel)
+            ? ScoreCalculator.level(forTotalShards: saved.shards, startingAt: saved.startLevel)
             : saved.startLevel
         guard saved.version == GameSnapshot.currentVersion,
               let board = Board(cells: saved.cells),
               saved.startLevel >= 1, saved.level == expectedLevel,
-              saved.score >= 0, saved.lines >= 0, saved.combo >= -1,
-              saved.lines < mode.lineTarget ?? .max,
+              saved.score >= 0, saved.shards >= 0,
+              saved.shards < mode.shardTarget ?? .max,
+              (0...GameEngine.pulseCost).contains(saved.charge),
+              (0..<Board.sectors).contains(saved.aim),
               saved.elapsed.isFinite, saved.elapsed >= 0,
               saved.elapsed < mode.timeLimit ?? .infinity,
-              (0...GameEngine.maxLockResets).contains(saved.lockResets),
-              (0...4).contains(saved.lastKickIndex),
-              !saved.holdUsed || saved.holdPiece != nil else { return nil }
+              (0...GameEngine.maxLockResets).contains(saved.lockResets) else { return nil }
 
-        if saved.pendingClearRows.isEmpty {
-            guard let piece = saved.current, board.canPlace(piece) else { return nil }
+        if saved.pendingClear.isEmpty {
+            guard saved.chain == 0, let piece = saved.current, board.canPlace(piece) else { return nil }
         } else {
-            guard saved.current == nil,
-                  Set(saved.pendingClearRows).count == saved.pendingClearRows.count,
-                  saved.pendingClearRows.allSatisfy(board.isRowFull) else { return nil }
+            guard saved.current == nil, saved.chain >= 1,
+                  Set(saved.pendingClear) == board.scan().cells else { return nil }
         }
 
         var restoredConfig = config
         restoredConfig.startLevel = saved.startLevel
-        self.init(mode: mode, config: restoredConfig, random: random, board: board)
+        self.init(mode: mode, config: restoredConfig, random: random,
+                  board: board, charge: saved.charge)
 
         bag = RandomBag(queue: saved.queue, random: random)
         preview = bag.preview
-        holdPiece = saved.holdPiece
-        holdUsedThisPiece = saved.holdUsed
-        pendingClearRows = saved.pendingClearRows
+        aim = saved.aim
+        pendingClear = saved.pendingClear
+        chain = saved.chain
         score = saved.score
-        lines = saved.lines
+        shards = saved.shards
         level = saved.level
-        combo = saved.combo
-        backToBack = saved.backToBack
         elapsed = saved.elapsed
         stats = saved.stats
         lockResets = saved.lockResets
-        lowestRowReached = saved.lowestRowReached
-        lastActionWasRotation = saved.lastActionWasRotation
-        lastKickIndex = saved.lastKickIndex
+        lowestRingReached = saved.lowestRingReached
         clearTimer = GameEngine.clearDuration
         readyTimer = 0
         current = saved.current
         recomputeGhost()
 
-        resumePhase = saved.pendingClearRows.isEmpty ? .playing : .clearing
+        resumePhase = saved.pendingClear.isEmpty ? .playing : .clearing
         phase = .paused
     }
 
-    /// The run as it stands, or `nil` before the first piece and after the
+    /// The run as it stands, or `nil` before the first shard and after the
     /// end, when there is nothing worth coming back to.
     func snapshot() -> GameSnapshot? {
         switch phase == .paused ? resumePhase : phase {
@@ -146,21 +147,18 @@ final class GameEngine {
                             startLevel: config.startLevel,
                             cells: board.cells,
                             current: current,
-                            holdPiece: holdPiece,
-                            holdUsed: holdUsedThisPiece,
+                            aim: aim,
                             queue: bag.queue,
-                            pendingClearRows: pendingClearRows,
+                            pendingClear: pendingClear,
+                            chain: chain,
+                            charge: charge,
                             score: score,
-                            lines: lines,
+                            shards: shards,
                             level: level,
-                            combo: combo,
-                            backToBack: backToBack,
                             elapsed: elapsed,
                             stats: stats,
                             lockResets: lockResets,
-                            lowestRowReached: lowestRowReached,
-                            lastActionWasRotation: lastActionWasRotation,
-                            lastKickIndex: lastKickIndex)
+                            lowestRingReached: lowestRingReached)
     }
 
     /// Skips the countdown. Tests call this to start playing immediately.
@@ -176,7 +174,14 @@ final class GameEngine {
         return events
     }
 
-    var canHold: Bool { phase == .playing && !holdUsedThisPiece }
+    var canPulse: Bool {
+        phase == .playing && current != nil && charge >= GameEngine.pulseCost
+    }
+
+    /// Pulse charge as a fraction, for the core meter.
+    var chargeFraction: Double {
+        Double(charge) / Double(GameEngine.pulseCost)
+    }
 
     // MARK: Time remaining / progress
 
@@ -185,17 +190,16 @@ final class GameEngine {
         return max(0, limit - elapsed)
     }
 
-    var linesRemaining: Int? {
-        guard let target = mode.lineTarget else { return nil }
-        return max(0, target - lines)
+    var shardsRemaining: Int? {
+        guard let target = mode.shardTarget else { return nil }
+        return max(0, target - shards)
     }
 
-    /// How close the stack is to the ceiling, 0...1, for the danger vignette.
+    /// How close the stack is to the rim, 0...1, for the danger vignette.
     var dangerLevel: Double {
-        guard let top = board.highestOccupiedRow() else { return 0 }
-        let visibleTop = Board.bufferRows
-        let dangerZone = 6.0
-        let depth = Double(top - visibleTop)
+        guard let outer = board.outermostOccupiedRing() else { return 0 }
+        let dangerZone = 3.0
+        let depth = Double(outer - Board.bufferRings)
         guard depth < dangerZone else { return 0 }
         return min(1, (dangerZone - depth) / dangerZone)
     }
@@ -217,7 +221,7 @@ final class GameEngine {
         guard phase == .paused else { return }
         phase = resumePhase
         // The accumulator was filled by the frame the player paused on, and
-        // spending it now would drop the piece the instant play resumes.
+        // spending it now would drop the shard the instant play resumes.
         gravityAccumulator = 0
     }
 
@@ -227,9 +231,9 @@ final class GameEngine {
         guard deltaTime.isFinite, deltaTime > 0 else { return }
         let clockDelta = clockDeltaTime ?? deltaTime
         guard clockDelta.isFinite, clockDelta >= 0 else { return }
-        // The run clock covers the clear animation too, otherwise an Ultra
-        // round lasts three minutes plus however long the player spent
-        // watching rows disappear.
+        // The run clock covers the clear animation too, otherwise a Blitz
+        // round lasts two minutes plus however long the player spent
+        // watching cascades.
         switch phase {
         case .playing, .clearing:
             elapsed = min(elapsed + clockDelta, mode.timeLimit ?? .infinity)
@@ -250,9 +254,9 @@ final class GameEngine {
             }
         case .clearing:
             clearTimer -= deltaTime
-            if clearTimer <= 0 { finishLineClear() }
+            if clearTimer <= 0 { finishClear() }
         case .playing:
-            updateHorizontalRepeat(deltaTime: deltaTime)
+            apply(autoShift.tick(deltaTime: deltaTime))
             updateGravity(deltaTime: deltaTime)
             updateLockDelay(deltaTime: deltaTime)
         case .paused, .over:
@@ -264,11 +268,11 @@ final class GameEngine {
         guard current != nil else { return }
         var interval = ScoreCalculator.gravityInterval(level: level)
         if softDropping {
-            interval = min(interval, max(interval / 20, 0.02))
+            interval = min(interval, max(interval / 20, 0.03))
         }
 
         gravityAccumulator += deltaTime
-        var droppedRows = 0
+        var dropped = 0
         while gravityAccumulator >= interval {
             gravityAccumulator -= interval
             guard let moving = current, board.canPlace(moving.moved(dx: 0, dy: 1)) else {
@@ -276,15 +280,12 @@ final class GameEngine {
                 break
             }
             setCurrent(moving.moved(dx: 0, dy: 1))
-            droppedRows += 1
+            dropped += 1
         }
 
-        if droppedRows > 0 {
-            lastActionWasRotation = false
-            if softDropping {
-                score += ScoreCalculator.softDropPoints(rows: droppedRows)
-                events.append(.softDropped(rows: droppedRows))
-            }
+        if dropped > 0, softDropping {
+            score += ScoreCalculator.softDropPoints(rings: dropped)
+            events.append(.softDropped(rings: dropped))
         }
     }
 
@@ -307,24 +308,19 @@ final class GameEngine {
         }
     }
 
-    /// Any successful move or rotation buys the player more time on the
-    /// floor, but only up to `maxLockResets` so a piece cannot hover forever.
+    /// Any successful move or turn buys the player more time once landed,
+    /// but only up to `maxLockResets` so a shard cannot circle forever.
     private func registerLockReset() {
-        guard isGrounded else { return }
-        guard lockResets < GameEngine.maxLockResets else { return }
+        guard isGrounded, lockResets < GameEngine.maxLockResets else { return }
         lockResets += 1
         lockTimer = GameEngine.lockDelay
     }
 
-    // MARK: Horizontal input with DAS / ARR
+    // MARK: Sideways input with DAS / ARR
 
     func setHorizontalInput(_ direction: Int) {
         guard phase == .playing || phase == .clearing || direction == 0 else { return }
         apply(autoShift.setDirection(direction))
-    }
-
-    private func updateHorizontalRepeat(deltaTime: TimeInterval) {
-        apply(autoShift.tick(deltaTime: deltaTime))
     }
 
     private func apply(_ shift: AutoShift.Shift) {
@@ -337,7 +333,10 @@ final class GameEngine {
                 guard move(dx: direction) else { return }
             }
         case let .slam(direction):
-            while move(dx: direction) {}
+            // Without walls a slam could circle for ever; stop after one lap.
+            for _ in 0..<Board.sectors {
+                guard move(dx: direction) else { return }
+            }
         }
     }
 
@@ -361,7 +360,6 @@ final class GameEngine {
         let candidate = piece.moved(dx: dx, dy: 0)
         guard board.canPlace(candidate) else { return false }
         setCurrent(candidate)
-        lastActionWasRotation = false
         registerLockReset()
         events.append(.moved)
         return true
@@ -375,65 +373,73 @@ final class GameEngine {
             return false
         }
         setCurrent(result.piece)
-        lastActionWasRotation = true
-        lastKickIndex = result.kickIndex
         registerLockReset()
         events.append(.rotated(kicked: result.kickIndex != 0))
         return true
     }
 
-    /// One discrete row for assistive input, which cannot hold a touch down.
+    /// One discrete ring for assistive input, which cannot hold a touch down.
     func softDropStep() {
         guard phase == .playing, let piece = current else { return }
         let candidate = piece.moved(dx: 0, dy: 1)
         guard board.canPlace(candidate) else { return }
         setCurrent(candidate)
-        lastActionWasRotation = false
-        score += ScoreCalculator.softDropPoints(rows: 1)
-        events.append(.softDropped(rows: 1))
+        score += ScoreCalculator.softDropPoints(rings: 1)
+        events.append(.softDropped(rings: 1))
     }
 
     func hardDrop() {
         guard phase == .playing, let piece = current else { return }
-        let landed = board.hardDropPosition(of: piece)
-        let rows = landed.origin.y - piece.origin.y
-        if rows > 0 {
-            score += ScoreCalculator.hardDropPoints(rows: rows)
-            lastActionWasRotation = false
-        }
+        let landed = board.dropPosition(of: piece)
+        let rings = landed.origin.y - piece.origin.y
+        if rings > 0 { score += ScoreCalculator.hardDropPoints(rings: rings) }
         setCurrent(landed)
-        events.append(.hardDropped(rows: rows, from: piece.origin.y, piece: landed))
+        events.append(.hardDropped(rings: rings, from: piece.origin.y, piece: landed))
         lockCurrentPiece()
     }
 
-    func hold() {
-        guard phase == .playing, let piece = current else { return }
-        guard !holdUsedThisPiece else {
-            events.append(.holdRejected)
+    /// Spends a full charge to wipe the innermost rings. The cells outside
+    /// them slide in at once, and the falling shard is pushed back out if
+    /// anything slid into its way.
+    func pulse() {
+        guard canPulse, var piece = current else {
+            events.append(.pulseRejected)
             return
         }
-        holdUsedThisPiece = true
-        let outgoing = piece.type
-
-        if let stored = holdPiece {
-            holdPiece = outgoing
-            spawn(type: stored)
-        } else {
-            holdPiece = outgoing
-            spawnNextPiece()
+        let innermost = (Board.rings - GameEngine.pulseRings)..<Board.rings
+        let doomed = Set(innermost.flatMap { y in
+            (0..<Board.sectors).compactMap { x in board[x, y] == nil ? nil : Point(x: x, y: y) }
+        })
+        guard !doomed.isEmpty else {
+            events.append(.pulseRejected)
+            return
         }
-        // A swap into a blocked spawn ends the run; that is the only thing
-        // worth announcing.
-        if case .over = phase { return }
-        events.append(.holdSwapped)
+
+        charge = 0
+        board.remove(doomed)
+        while !board.canPlace(piece) {
+            guard piece.origin.y > 0 else {
+                finish(.topOut)
+                return
+            }
+            piece = piece.moved(dx: 0, dy: -1)
+        }
+        setCurrent(piece)
+
+        let points = ScoreCalculator.pulsePoints(cells: doomed.count, level: level)
+        score += points
+        stats.pulses += 1
+        events.append(.pulsed(cells: doomed.sorted(by: Self.cellOrder), points: points))
+        _ = addProgress(cells: doomed.count, chargesCore: false)
     }
 
     // MARK: Piece lifecycle
 
     private func setCurrent(_ piece: Piece) {
         current = piece
-        if piece.origin.y > lowestRowReached {
-            lowestRowReached = piece.origin.y
+        aim = piece.origin.x
+        if piece.origin.y > lowestRingReached {
+            lowestRingReached = piece.origin.y
             lockResets = 0
         }
         recomputeGhost()
@@ -444,41 +450,30 @@ final class GameEngine {
             ghost = nil
             return
         }
-        let landed = board.hardDropPosition(of: piece)
+        let landed = board.dropPosition(of: piece)
         ghost = landed.origin == piece.origin ? nil : landed
     }
 
     private func spawnNextPiece() {
-        let type = bag.next()
+        let shard = bag.next()
         piecesDealt += 1
         preview = bag.preview
-        spawn(type: type)
-    }
 
-    private func spawn(type: TetrominoType) {
-        let originX: Int
-        switch type {
-        case .o: originX = 4
-        default: originX = 3
-        }
-        var piece = Piece(type: type, state: .spawn, origin: Point(x: originX, y: 0))
-
+        var piece = Piece(shard: shard, origin: Point(x: aim, y: Board.bufferRings - 1))
         guard board.canPlace(piece) else {
             finish(.topOut)
             return
         }
-        // Pieces appear in the buffer then immediately step into view.
+        // Shards appear just outside the rim, then step straight in.
         if board.canPlace(piece.moved(dx: 0, dy: 1)) {
             piece = piece.moved(dx: 0, dy: 1)
         }
 
-        lowestRowReached = piece.origin.y
+        lowestRingReached = piece.origin.y
         lockResets = 0
         lockTimer = GameEngine.lockDelay
         isGrounded = false
         gravityAccumulator = 0
-        lastActionWasRotation = false
-        lastKickIndex = 0
 
         setCurrent(piece)
         events.append(.spawned)
@@ -488,95 +483,79 @@ final class GameEngine {
     private func lockCurrentPiece() {
         guard let piece = current else { return }
 
-        let spin = SpinDetector.detect(piece: piece,
-                                       lastActionWasRotation: lastActionWasRotation,
-                                       kickIndex: lastKickIndex,
-                                       board: board)
-
         board.lock(piece)
         stats.piecesPlaced += 1
         current = nil
         ghost = nil
-        holdUsedThisPiece = false
         isGrounded = false
         events.append(.locked(piece: piece))
 
-        // Lock out: the whole piece finished above the visible playfield.
-        if piece.cells.allSatisfy({ $0.y < Board.bufferRows }) {
+        // Lock out: the whole shard came to rest outside the rim.
+        if piece.cells.allSatisfy({ $0.y < Board.bufferRings }) {
             finish(.topOut)
             return
         }
 
-        let completed = board.completedRows()
-        resolveScore(rows: completed, spin: spin)
-
-        if completed.isEmpty {
+        let scan = board.scan()
+        if scan.isEmpty {
+            chain = 0
             spawnNextPiece()
         } else {
-            pendingClearRows = completed
-            clearTimer = GameEngine.clearDuration
-            phase = .clearing
+            chain = 1
+            beginClear(scan)
         }
     }
 
-    private func resolveScore(rows: [Int], spin: SpinKind) {
-        let cleared = rows.count
-
-        if cleared > 0 {
-            combo += 1
-        } else {
-            combo = -1
-        }
-        let activeCombo = max(combo, 0)
-        stats.maxCombo = max(stats.maxCombo, activeCombo)
-
-        // A perfect clear is judged on the board as it will look once the
-        // completed rows are gone.
-        var projected = board
-        projected.clearRows(rows)
-        let perfect = cleared > 0 && projected.isEmpty()
-
-        let difficult = cleared == 4 || (spin != .none && cleared > 0)
-        let chained = difficult && backToBack
-
-        let points = ScoreCalculator.points(lines: cleared,
-                                            spin: spin,
-                                            perfectClear: perfect,
-                                            level: level,
-                                            backToBack: chained,
-                                            combo: activeCombo)
+    private func beginClear(_ scan: ClearScan) {
+        let cells = scan.cells.sorted(by: Self.cellOrder)
+        let points = ScoreCalculator.points(cells: cells.count, rings: scan.rings,
+                                            arcs: scan.arcs, chain: chain, level: level)
         score += points
+        stats.ringsCleared += scan.rings
+        stats.arcsFused += scan.arcs
+        stats.maxChain = max(stats.maxChain, chain)
 
-        if difficult {
-            backToBack = true
-        } else if cleared > 0 {
-            backToBack = false
-        }
-
-        if cleared == 4 { stats.quads += 1 }
-        if spin != .none { stats.tSpins += 1 }
-
-        guard cleared > 0 else { return }
-
-        let outcome = ClearOutcome(lines: cleared,
-                                   spin: spin,
-                                   perfectClear: perfect,
-                                   backToBack: chained,
-                                   combo: activeCombo,
-                                   points: points)
-        events.append(.linesCleared(rows: rows, outcome: outcome))
+        let outcome = ClearOutcome(cells: cells.count, rings: scan.rings, arcs: scan.arcs,
+                                   chain: chain, points: points)
+        events.append(.cleared(cells: cells,
+                               colors: cells.compactMap { board[$0.x, $0.y] },
+                               outcome: outcome))
+        pendingClear = cells
+        clearTimer = GameEngine.clearDuration
+        phase = .clearing
     }
 
-    private func finishLineClear() {
-        let rows = pendingClearRows
-        pendingClearRows = []
-        board.clearRows(rows)
+    private func finishClear() {
+        let cells = pendingClear
+        pendingClear = []
+        board.remove(Set(cells))
+        guard addProgress(cells: cells.count, chargesCore: true) else { return }
 
-        lines += rows.count
-        stats.linesCleared += rows.count
+        // Whatever slid inwards may have lined up into something new.
+        let cascade = board.scan()
+        if cascade.isEmpty {
+            chain = 0
+            phase = .playing
+            spawnNextPiece()
+        } else {
+            chain += 1
+            beginClear(cascade)
+        }
+    }
+
+    /// Banks cleared cells towards level, target and the core.
+    /// - Returns: `false` when this ended the run.
+    private func addProgress(cells: Int, chargesCore: Bool) -> Bool {
+        shards += cells
+        stats.shardsCleared += cells
+
+        if chargesCore, charge < GameEngine.pulseCost {
+            charge = min(GameEngine.pulseCost, charge + cells)
+            if charge == GameEngine.pulseCost { events.append(.coreCharged) }
+        }
 
         if mode.levelsUp {
-            let newLevel = ScoreCalculator.level(forTotalLines: lines,
+            let newLevel = ScoreCalculator.level(forTotalShards: shards,
                                                  startingAt: config.startLevel)
             if newLevel > level {
                 level = newLevel
@@ -584,31 +563,34 @@ final class GameEngine {
             }
         }
 
-        if let target = mode.lineTarget, lines >= target {
+        if let target = mode.shardTarget, shards >= target {
             finish(.targetReached)
-            return
+            return false
         }
-
-        phase = .playing
-        spawnNextPiece()
+        return true
     }
 
     private func finish(_ reason: GameOverReason) {
         if case .over = phase { return }
-        // An Ultra clock can expire while rows are still playing their clear
-        // animation. The points were awarded on the lock, so the line count
-        // has to follow rather than be thrown away with the run.
-        if !pendingClearRows.isEmpty {
-            let rows = pendingClearRows
-            pendingClearRows = []
-            board.clearRows(rows)
-            lines += rows.count
-            stats.linesCleared += rows.count
+        // A Blitz clock can expire while cells are still playing their clear
+        // animation. The points were awarded already, so the count follows.
+        if !pendingClear.isEmpty {
+            let cells = pendingClear
+            pendingClear = []
+            board.remove(Set(cells))
+            shards += cells.count
+            stats.shardsCleared += cells.count
         }
         phase = .over(reason)
         current = nil
         ghost = nil
         releaseAllInput()
         events.append(.gameOver(reason: reason))
+    }
+
+    /// Ring by ring from the rim, then clockwise, so event payloads are
+    /// stable for tests and saved runs.
+    private static func cellOrder(_ a: Point, _ b: Point) -> Bool {
+        a.y == b.y ? a.x < b.x : a.y < b.y
     }
 }

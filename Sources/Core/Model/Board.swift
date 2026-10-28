@@ -1,62 +1,68 @@
 import Foundation
 
-/// The playfield grid. Rows 0 and 1 are the hidden spawn buffer, so the
-/// visible area is rows 2...21. `y` grows downwards from the top.
+/// The circular well: sixteen sectors around the circle and ten rings from
+/// the rim to the core. Rings 0 and 1 are the hidden entry buffer outside
+/// the rim, so the visible rings are 2...9, with 9 touching the core.
 struct Board {
-    static let columns = 10
-    static let rows = 22
-    static let bufferRows = 2
+    static let sectors = 16
+    static let rings = 10
+    static let bufferRings = 2
+    static let visibleRings = rings - bufferRings
+    /// Same-colour cells in a row along a ring that fuse into an arc.
+    static let arcLength = 5
 
-    /// Row-major storage: `cells[y * columns + x]`, `nil` meaning empty.
-    private(set) var cells: [TetrominoType?]
+    /// Ring-major storage: `cells[y * sectors + x]`, `nil` meaning empty.
+    private(set) var cells: [ShardColor?]
 
     init() {
-        cells = Array(repeating: nil, count: Board.columns * Board.rows)
+        cells = Array(repeating: nil, count: Board.sectors * Board.rings)
     }
 
-    /// Rebuilds a saved playfield, refusing storage of the wrong size.
-    init?(cells: [TetrominoType?]) {
-        guard cells.count == Board.columns * Board.rows else { return nil }
+    /// Rebuilds a saved well, refusing storage of the wrong size.
+    init?(cells: [ShardColor?]) {
+        guard cells.count == Board.sectors * Board.rings else { return nil }
         self.cells = cells
     }
 
-    subscript(x: Int, y: Int) -> TetrominoType? {
+    /// Any sector index, folded back onto the circle.
+    static func wrap(_ x: Int) -> Int {
+        ((x % sectors) + sectors) % sectors
+    }
+
+    subscript(x: Int, y: Int) -> ShardColor? {
         get {
-            guard isInside(x: x, y: y) else { return nil }
-            return cells[y * Board.columns + x]
+            guard isInside(y: y) else { return nil }
+            return cells[y * Board.sectors + Board.wrap(x)]
         }
         set {
-            guard isInside(x: x, y: y) else { return }
-            cells[y * Board.columns + x] = newValue
+            guard isInside(y: y) else { return }
+            cells[y * Board.sectors + Board.wrap(x)] = newValue
         }
     }
 
-    func isInside(x: Int, y: Int) -> Bool {
-        x >= 0 && x < Board.columns && y >= 0 && y < Board.rows
+    func isInside(y: Int) -> Bool {
+        y >= 0 && y < Board.rings
     }
 
-    /// True when the cell is out of bounds or already filled. Treating the
-    /// walls and floor as solid is what makes the T-spin corner test work.
+    /// True for a filled cell, for the core and for anything beyond the
+    /// buffer. There are no side walls: the sectors wrap.
     func isBlocked(x: Int, y: Int) -> Bool {
-        guard isInside(x: x, y: y) else { return true }
-        return cells[y * Board.columns + x] != nil
+        guard isInside(y: y) else { return true }
+        return self[x, y] != nil
     }
 
     func canPlace(_ piece: Piece) -> Bool {
-        for cell in piece.cells where isBlocked(x: cell.x, y: cell.y) {
-            return false
-        }
-        return true
+        piece.cells.allSatisfy { !isBlocked(x: $0.x, y: $0.y) }
     }
 
     mutating func lock(_ piece: Piece) {
         for cell in piece.cells {
-            self[cell.x, cell.y] = piece.type
+            self[cell.x, cell.y] = piece.color
         }
     }
 
-    /// Drops the piece as far as it will go without colliding.
-    func hardDropPosition(of piece: Piece) -> Piece {
+    /// Sends the piece as far towards the core as it will go.
+    func dropPosition(of piece: Piece) -> Piece {
         var result = piece
         while canPlace(result.moved(dx: 0, dy: 1)) {
             result = result.moved(dx: 0, dy: 1)
@@ -64,43 +70,83 @@ struct Board {
         return result
     }
 
-    func isRowFull(_ y: Int) -> Bool {
-        for x in 0..<Board.columns where self[x, y] == nil { return false }
-        return true
+    func isRingFull(_ y: Int) -> Bool {
+        (0..<Board.sectors).allSatisfy { self[$0, y] != nil }
     }
 
     func isEmpty() -> Bool {
         cells.allSatisfy { $0 == nil }
     }
 
-    /// Indices of every complete row, top to bottom.
-    func completedRows() -> [Int] {
-        (0..<Board.rows).filter { isRowFull($0) }
-    }
-
-    /// Removes the given rows and collapses everything above them down.
-    mutating func clearRows(_ rows: [Int]) {
-        guard !rows.isEmpty else { return }
-        let doomed = Set(rows.filter { (0..<Board.rows).contains($0) })
-        var surviving = [TetrominoType?]()
-        surviving.reserveCapacity(cells.count)
-
-        for y in 0..<Board.rows where !doomed.contains(y) {
-            let start = y * Board.columns
-            surviving.append(contentsOf: cells[start..<(start + Board.columns)])
+    /// Everything that would clear right now: full rings, plus every run of
+    /// `arcLength` or more same-coloured cells along a ring.
+    func scan() -> ClearScan {
+        var scan = ClearScan()
+        for y in Board.bufferRings..<Board.rings {
+            if isRingFull(y) {
+                scan.rings += 1
+                for x in 0..<Board.sectors { scan.cells.insert(Point(x: x, y: y)) }
+            }
+            for run in sameColourRuns(inRing: y) where run.count >= Board.arcLength {
+                scan.arcs += 1
+                scan.cells.formUnion(run.map { Point(x: $0, y: y) })
+            }
         }
-
-        let padding = Array<TetrominoType?>(repeating: nil,
-                                            count: doomed.count * Board.columns)
-        cells = padding + surviving
+        return scan
     }
 
-    /// Highest occupied row index, or `nil` when the board is empty.
-    /// Used to drive the danger vignette.
-    func highestOccupiedRow() -> Int? {
-        for y in 0..<Board.rows {
-            for x in 0..<Board.columns where self[x, y] != nil { return y }
+    /// Runs of one colour along a ring, as sector lists, following the
+    /// circle across sector 0. A ring entirely of one colour is one run.
+    private func sameColourRuns(inRing y: Int) -> [[Int]] {
+        let ring = (0..<Board.sectors).map { self[$0, y] }
+        guard let start = (0..<Board.sectors).first(where: { ring[$0] != ring[Board.wrap($0 - 1)] }) else {
+            return ring[0] == nil ? [] : [Array(0..<Board.sectors)]
         }
-        return nil
+        var runs: [[Int]] = []
+        var current: [Int] = []
+        for step in 0..<Board.sectors {
+            let x = Board.wrap(start + step)
+            if let last = current.last, ring[x] != ring[last] {
+                if ring[last] != nil { runs.append(current) }
+                current = []
+            }
+            current.append(x)
+        }
+        if let last = current.last, ring[last] != nil { runs.append(current) }
+        return runs
     }
+
+    /// Removes the given cells. In each sector, whatever sat outside a
+    /// removed cell slides inwards by one ring for every cell removed
+    /// beneath it; gaps that were already there stay where they are.
+    mutating func remove(_ doomed: Set<Point>) {
+        guard !doomed.isEmpty else { return }
+        var next = Board()
+        for x in 0..<Board.sectors {
+            var shift = 0
+            for y in stride(from: Board.rings - 1, through: 0, by: -1) {
+                if doomed.contains(Point(x: x, y: y)) {
+                    shift += 1
+                } else if let color = self[x, y] {
+                    next[x, y + shift] = color
+                }
+            }
+        }
+        self = next
+    }
+
+    /// Outermost occupied ring, or `nil` when the well is empty. Drives the
+    /// danger vignette.
+    func outermostOccupiedRing() -> Int? {
+        (0..<Board.rings).first { y in (0..<Board.sectors).contains { self[$0, y] != nil } }
+    }
+}
+
+/// The cells a lock or a cascade would clear, and why.
+struct ClearScan: Equatable {
+    var cells: Set<Point> = []
+    var rings = 0
+    var arcs = 0
+
+    var isEmpty: Bool { cells.isEmpty }
 }

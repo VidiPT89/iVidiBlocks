@@ -5,7 +5,7 @@ import XCTest
 final class GameViewModelTests: XCTestCase {
     private static let audio = AudioManager()
     private static let haptics = HapticsManager()
-    private func makeModel(_ mode: GameMode = .marathon,
+    private func makeModel(_ mode: GameMode = .orbit,
                            savedGames: SavedGameStore? = nil,
                            resuming saved: GameSnapshot? = nil,
                            lesson: Lesson? = nil) -> (GameViewModel, StatsStore) {
@@ -40,13 +40,12 @@ final class GameViewModelTests: XCTestCase {
         let (model, _) = makeModel()
         let old = model.engine
         model.restart()
-        model.handle(.linesCleared(rows: [21], outcome: ClearOutcome(
-            lines: 1, spin: .none, perfectClear: false,
-            backToBack: false, combo: 0, points: 100)), from: old)
+        model.handle(.cleared(cells: [], colors: [], outcome: ClearOutcome(
+            cells: 16, rings: 1, arcs: 0, chain: 1, points: 260)), from: old)
         XCTAssertNil(model.banner)
     }
 
-    func testMarathonDoesNotPublishAnUnusedClock() async {
+    func testOrbitDoesNotPublishAnUnusedClock() async {
         let (model, _) = makeModel()
         model.engine.startImmediately()
         model.engine.update(deltaTime: 0.2)
@@ -55,17 +54,17 @@ final class GameViewModelTests: XCTestCase {
         XCTAssertEqual(model.engine.elapsed, 0.2)
     }
 
-    func testUltraOnlyPublishesWholeCountdownSeconds() async {
-        let (model, _) = makeModel(.ultra)
+    func testBlitzOnlyPublishesWholeCountdownSeconds() async {
+        let (model, _) = makeModel(.blitz)
         model.engine.startImmediately()
         model.engine.update(deltaTime: 0.2)
         model.syncFromEngine(model.engine)
-        XCTAssertEqual(model.timeRemaining, 180)
+        XCTAssertEqual(model.timeRemaining, 120)
         XCTAssertEqual(model.elapsed, 0)
     }
 
-    func testSprintKeepsPreciseElapsedTime() async {
-        let (model, _) = makeModel(.sprint)
+    func testTargetKeepsPreciseElapsedTime() async {
+        let (model, _) = makeModel(.target)
         model.engine.startImmediately()
         model.engine.update(deltaTime: 0.125)
         model.syncFromEngine(model.engine)
@@ -83,29 +82,28 @@ final class GameViewModelTests: XCTestCase {
         XCTAssertGreaterThan(try XCTUnwrap(model.engine.current).origin.x, before)
     }
 
-    func testHoldAvailabilityFollowsTheEngineAndResetsOnRestart() async {
-        let (model, _) = makeModel()
+    func testPulseAvailabilityFollowsTheChargeAndResetsOnRestart() async throws {
+        let lesson = try XCTUnwrap(Lesson.all.first { $0.charged })
+        let (model, _) = makeModel(lesson: lesson)
         model.engine.startImmediately()
         model.syncFromEngine(model.engine)
-        XCTAssertTrue(model.canHold)
-        model.hold()
+        XCTAssertTrue(model.canPulse)
+        XCTAssertEqual(model.charge, 1)
+        model.pulse()
         model.syncFromEngine(model.engine)
-        XCTAssertFalse(model.canHold)
-        model.engine.hardDrop()
-        model.syncFromEngine(model.engine)
-        XCTAssertTrue(model.canHold)
+        XCTAssertFalse(model.canPulse)
+        XCTAssertEqual(model.charge, 0)
         model.restart()
-        XCTAssertFalse(model.canHold)
+        XCTAssertFalse(model.canPulse)
     }
 
-    func testClearBannerIncludesPointsAndBothChainBonuses() async throws {
+    func testAChainBannerNamesTheLinkAndThePoints() async throws {
         let (model, _) = makeModel()
-        model.handle(.linesCleared(rows: [18, 19, 20, 21], outcome: ClearOutcome(
-            lines: 4, spin: .none, perfectClear: false,
-            backToBack: true, combo: 2, points: 1300)), from: model.engine)
-        let detail = try XCTUnwrap(model.banner?.detail)
-        XCTAssertTrue(detail.contains(1300.formatted()))
-        XCTAssertEqual(detail.components(separatedBy: " · ").count, 3)
+        model.handle(.cleared(cells: [], colors: [], outcome: ClearOutcome(
+            cells: 6, rings: 0, arcs: 1, chain: 3, points: 1080)), from: model.engine)
+        let banner = try XCTUnwrap(model.banner)
+        XCTAssertTrue(banner.text.hasSuffix("×3"))
+        XCTAssertTrue(try XCTUnwrap(banner.detail).contains(1080.formatted()))
     }
 
     // MARK: Saved runs
@@ -169,16 +167,16 @@ final class GameViewModelTests: XCTestCase {
         XCTAssertEqual(stats.lifetime.gamesPlayed, 0)
     }
 
-    func testADrillPreviewsOnlyThePiecesItStillDeals() async throws {
-        let lesson = try XCTUnwrap(Lesson.all.first { $0.id == "hold" })
+    func testADrillPreviewsOnlyTheShardsItStillDeals() async throws {
+        let lesson = try XCTUnwrap(Lesson.all.first { $0.id == "pulse" })
         let (model, _) = makeModel(lesson: lesson)
-        XCTAssertEqual(model.preview, [.o, .i])
+        XCTAssertEqual(model.preview.count, 3)
         model.engine.startImmediately()
         model.syncFromEngine(model.engine)
-        XCTAssertEqual(model.preview, [.i])
-        model.hold()
+        XCTAssertEqual(model.preview.count, 2)
+        model.engine.hardDrop()
         model.syncFromEngine(model.engine)
-        XCTAssertEqual(model.preview, [])
+        XCTAssertEqual(model.preview.count, 1)
     }
 
     func testPassingADrillMarksItDoneAndAnnouncesTheResult() async throws {

@@ -50,7 +50,7 @@ struct AppRouter: View {
                 }, onPractice: { lesson in
                     resumingRun = nil
                     practiceLesson = lesson
-                    withAnimation(.easeInOut(duration: 0.35)) { activeMode = .marathon }
+                    withAnimation(.easeInOut(duration: 0.35)) { activeMode = .orbit }
                 })
                 .transition(.opacity)
             }

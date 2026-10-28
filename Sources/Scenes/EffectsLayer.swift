@@ -1,20 +1,18 @@
 import SpriteKit
 import UIKit
 
-/// Everything decorative that happens over the board: clear particles, the
-/// screen flash, the shake and the danger vignette. Each effect is a no-op
+/// Everything decorative that happens over the well: clear particles, the
+/// screen flash, the pulse wave and the danger vignette. Each effect is a no-op
 /// when Reduce Motion is on, so the game stays readable without them.
 final class EffectsLayer: SKNode {
 
     var reduceMotion = false
 
-    private let cellSize: CGFloat
     private let boardSize: CGSize
     private let flashNode: SKSpriteNode
     private let vignetteNode: SKSpriteNode
 
-    init(cellSize: CGFloat, boardSize: CGSize) {
-        self.cellSize = cellSize
+    init(boardSize: CGSize) {
         self.boardSize = boardSize
         flashNode = SKSpriteNode(color: .white, size: boardSize)
         vignetteNode = SKSpriteNode(texture: EffectsLayer.vignetteTexture(size: boardSize),
@@ -47,7 +45,7 @@ final class EffectsLayer: SKNode {
 
     // MARK: Danger vignette
 
-    /// Pulses red as the stack climbs. Driven every frame, so it only
+    /// Pulses red as the stack climbs towards the rim. Driven every frame, so it only
     /// touches alpha rather than creating actions.
     func updateDanger(_ level: Double, pulse: Double) {
         guard level > 0 else {
@@ -58,49 +56,27 @@ final class EffectsLayer: SKNode {
         vignetteNode.alpha = CGFloat(level * 0.55 * breathing)
     }
 
-    // MARK: Line clears
+    // MARK: Clears
 
-    /// Whitens the rows about to disappear, then bursts them into particles
-    /// tinted with the colours that were sitting there.
-    func lineClear(rows: [CGFloat], colors: [[UIColor]], isQuad: Bool) {
+    /// Bursts the cleared cells into shards tinted with their own colours,
+    /// flung outwards from the core.
+    func burst(at points: [CGPoint], colors: [UIColor], centre: CGPoint, big: Bool) {
         guard !reduceMotion else { return }
-        for (index, y) in rows.enumerated() {
-            let beam = SKSpriteNode(color: .white,
-                                    size: CGSize(width: boardSize.width, height: cellSize))
-            beam.anchorPoint = CGPoint(x: 0, y: 0.5)
-            beam.position = CGPoint(x: 0, y: y)
-            beam.zPosition = 15
-            beam.alpha = 0
-            beam.blendMode = .add
-            addChild(beam)
-            beam.run(.sequence([
-                .fadeAlpha(to: 0.9, duration: 0.08),
-                .wait(forDuration: 0.08),
-                .group([.fadeOut(withDuration: 0.18),
-                        .scaleY(to: 0.1, duration: 0.18)]),
-                .removeFromParent()
-            ]))
-
-            let rowColors = index < colors.count ? colors[index] : []
-            emitParticles(atRowY: y, colors: rowColors, count: isQuad ? 10 : 6)
-        }
-    }
-
-    private func emitParticles(atRowY y: CGFloat, colors: [UIColor], count: Int) {
-        guard !colors.isEmpty else { return }
-        for column in 0..<Board.columns {
-            let color = colors[min(column, colors.count - 1)]
-            for _ in 0..<max(1, count / Board.columns + 1) {
-                let shard = SKSpriteNode(color: color,
-                                         size: CGSize(width: cellSize * 0.22,
-                                                      height: cellSize * 0.22))
-                shard.position = CGPoint(x: (CGFloat(column) + 0.5) * cellSize, y: y)
+        let perCell = big ? 3 : 2
+        for (index, point) in points.enumerated() {
+            let color = index < colors.count ? colors[index] : .white
+            let away = CGVector(dx: point.x - centre.x, dy: point.y - centre.y)
+            let length = max(hypot(away.dx, away.dy), 1)
+            for _ in 0..<perCell {
+                let shard = SKSpriteNode(color: color, size: CGSize(width: 5, height: 5))
+                shard.position = point
                 shard.zPosition = 16
                 shard.blendMode = .add
                 addChild(shard)
 
-                let dx = CGFloat.random(in: -cellSize...cellSize)
-                let dy = CGFloat.random(in: cellSize * 0.4...cellSize * 2.2)
+                let push = CGFloat.random(in: 18...46)
+                let dx = away.dx / length * push + .random(in: -10...10)
+                let dy = away.dy / length * push + .random(in: -10...10)
                 shard.run(.sequence([
                     .group([
                         .moveBy(x: dx, y: dy, duration: 0.42),
@@ -114,16 +90,34 @@ final class EffectsLayer: SKNode {
         }
     }
 
+    /// A bright band that flares along a ring as it closes.
+    func ringFlare(radius: CGFloat, width: CGFloat, centre: CGPoint, color: UIColor) {
+        guard !reduceMotion else { return }
+        let ring = SKShapeNode(circleOfRadius: radius)
+        ring.position = centre
+        ring.strokeColor = color
+        ring.lineWidth = width
+        ring.fillColor = .clear
+        ring.zPosition = 15
+        ring.alpha = 0
+        ring.blendMode = .add
+        addChild(ring)
+        ring.run(.sequence([
+            .fadeAlpha(to: 0.9, duration: 0.08),
+            .wait(forDuration: 0.08),
+            .group([.fadeOut(withDuration: 0.2), .scale(to: 1.08, duration: 0.2)]),
+            .removeFromParent()
+        ]))
+    }
+
     // MARK: Piece feedback
 
-    /// Vertical streak left behind by a hard drop.
-    func hardDropTrail(column: Int, width: Int, fromY: CGFloat, toY: CGFloat, color: UIColor) {
+    /// Streak left behind by a drop, from the rim down to where it landed.
+    func dropTrail(centreX: CGFloat, width: CGFloat, fromY: CGFloat, toY: CGFloat, color: UIColor) {
         guard !reduceMotion, fromY > toY else { return }
-        let trail = SKSpriteNode(color: color,
-                                 size: CGSize(width: CGFloat(width) * cellSize,
-                                              height: fromY - toY))
-        trail.anchorPoint = CGPoint(x: 0, y: 0)
-        trail.position = CGPoint(x: CGFloat(column) * cellSize, y: toY)
+        let trail = SKSpriteNode(color: color, size: CGSize(width: width, height: fromY - toY))
+        trail.anchorPoint = CGPoint(x: 0.5, y: 0)
+        trail.position = CGPoint(x: centreX, y: toY)
         trail.zPosition = 12
         trail.alpha = 0.32
         trail.blendMode = .add
@@ -131,10 +125,10 @@ final class EffectsLayer: SKNode {
         trail.run(.sequence([.fadeOut(withDuration: 0.22), .removeFromParent()]))
     }
 
-    /// Expanding ring drawn from the centre of a successful T-spin.
-    func spinRing(at point: CGPoint, color: UIColor) {
+    /// Expanding ring from the core for each link of a chain.
+    func chainRing(at point: CGPoint, radius: CGFloat, color: UIColor) {
         guard !reduceMotion else { return }
-        let ring = SKShapeNode(circleOfRadius: cellSize * 0.6)
+        let ring = SKShapeNode(circleOfRadius: radius)
         ring.position = point
         ring.strokeColor = color
         ring.lineWidth = 3
@@ -143,41 +137,24 @@ final class EffectsLayer: SKNode {
         ring.blendMode = .add
         addChild(ring)
         ring.run(.sequence([
-            .group([.scale(to: 4.5, duration: 0.45), .fadeOut(withDuration: 0.45)]),
+            .group([.scale(to: 3.8, duration: 0.45), .fadeOut(withDuration: 0.45)]),
             .removeFromParent()
         ]))
     }
 
-    /// Golden sweep from the floor upwards for a perfect clear.
-    func perfectClearSweep(color: UIColor) {
+    /// The shock wave of a core pulse, filling the well from the centre.
+    func pulseWave(at point: CGPoint, radius: CGFloat, color: UIColor) {
         guard !reduceMotion else { return }
-        let sweep = SKSpriteNode(color: color,
-                                 size: CGSize(width: boardSize.width, height: cellSize * 1.6))
-        sweep.anchorPoint = CGPoint(x: 0, y: 0)
-        sweep.position = CGPoint(x: 0, y: -cellSize)
-        sweep.zPosition = 18
-        sweep.alpha = 0.75
-        sweep.blendMode = .add
-        addChild(sweep)
-        sweep.run(.sequence([
-            .group([.moveTo(y: boardSize.height, duration: 0.55),
-                    .fadeOut(withDuration: 0.55)]),
-            .removeFromParent()
-        ]))
-    }
-
-    /// Brief glow on the wall a rotation kicked away from.
-    func wallSpark(at point: CGPoint, color: UIColor) {
-        guard !reduceMotion else { return }
-        let spark = SKSpriteNode(color: color,
-                                 size: CGSize(width: cellSize * 0.25, height: cellSize * 2))
-        spark.position = point
-        spark.zPosition = 16
-        spark.blendMode = .add
-        spark.alpha = 0.8
-        addChild(spark)
-        spark.run(.sequence([
-            .group([.fadeOut(withDuration: 0.22), .scaleX(to: 3, duration: 0.22)]),
+        let wave = SKShapeNode(circleOfRadius: radius)
+        wave.position = point
+        wave.fillColor = color.withAlphaComponent(0.35)
+        wave.strokeColor = color
+        wave.lineWidth = 6
+        wave.zPosition = 18
+        wave.blendMode = .add
+        addChild(wave)
+        wave.run(.sequence([
+            .group([.scale(to: 4.2, duration: 0.55), .fadeOut(withDuration: 0.55)]),
             .removeFromParent()
         ]))
     }

@@ -24,7 +24,7 @@ final class LayoutTests: XCTestCase {
             ("tablet-light-left", CGSize(width: 768, height: 1024), ColorScheme.light, Handedness.left)
         ] {
             settings.handedness = handedness
-            let root = GameView(mode: .marathon, settings: settings, stats: stats,
+            let root = GameView(mode: .orbit, settings: settings, stats: stats,
                                 savedGames: savedGames, audio: audio, haptics: haptics, localization: loc, onExit: {})
                 .environmentObject(settings).environmentObject(loc).environmentObject(audio)
                 .environment(\.colorScheme, scheme)
@@ -60,7 +60,7 @@ final class LayoutTests: XCTestCase {
             .appendingPathComponent("layout-\(UUID().uuidString).json"))
         let savedGames = SavedGameStore(fileURL: FileManager.default.temporaryDirectory
             .appendingPathComponent("layout-run-\(UUID().uuidString).json"))
-        let engine = GameEngine(mode: .sprint)
+        let engine = GameEngine(mode: .target)
         engine.startImmediately()
         engine.hardDrop()
         savedGames.save(try XCTUnwrap(engine.snapshot()))
@@ -72,7 +72,7 @@ final class LayoutTests: XCTestCase {
         let screens: [(String, AnyView)] = [
             ("menu-saved-run", AnyView(MainMenuView(onPlay: { _, _ in }, onPractice: { _ in }))),
             ("practice-list", AnyView(PracticeView(onStart: { _ in }))),
-            ("drill-tspin", AnyView(GameView(mode: .marathon, settings: settings, stats: stats,
+            ("drill-chain", AnyView(GameView(mode: .orbit, settings: settings, stats: stats,
                                              savedGames: savedGames, audio: audio, haptics: haptics,
                                              localization: loc, lesson: Lesson.all[4], onExit: {})))
         ]

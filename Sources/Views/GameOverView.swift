@@ -70,7 +70,7 @@ struct GameOverView: View {
                     value: result.score.formatted(),
                     highlighted: true)
             Divider().overlay(Color.brandOrange.opacity(0.14))
-            StatRow(label: loc.string(.hudLines), value: "\(result.lines)")
+            StatRow(label: loc.string(.hudShards), value: "\(result.shards)")
             Divider().overlay(Color.brandOrange.opacity(0.14))
             StatRow(label: loc.string(.hudLevel), value: "\(result.level)")
             Divider().overlay(Color.brandOrange.opacity(0.14))

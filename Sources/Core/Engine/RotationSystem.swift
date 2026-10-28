@@ -1,66 +1,32 @@
 import Foundation
 
-/// Super Rotation System. On a failed rotation the piece is nudged through
-/// up to four alternative offsets ("wall kicks") before the turn is refused.
+/// Turns a shard a quarter turn. When the turned shard collides, it is
+/// nudged one sector either way, then one ring outwards, before the turn is
+/// refused. With no side walls there is never a wall to kick off, only
+/// neighbouring cells and the core.
 enum RotationSystem {
 
     struct Result {
         var piece: Piece
-        /// Index of the offset that succeeded, 0...4. Test 5 (index 4) is what
-        /// promotes a T-spin mini to a full T-spin.
+        /// Index of the offset that succeeded; 0 means no nudge was needed.
         var kickIndex: Int
     }
 
-    /// Attempts a rotation, returning the kicked piece or `nil` if all five
-    /// tests collide.
-    static func rotate(_ piece: Piece,
-                       clockwise: Bool,
-                       on board: Board) -> Result? {
-        guard piece.type != .o else { return nil }
+    /// Nudges tried in order, as (sectors, rings) with rings growing inwards.
+    static let kicks: [Point] = [
+        Point(x: 0, y: 0), Point(x: 1, y: 0), Point(x: -1, y: 0), Point(x: 0, y: -1)
+    ]
 
+    static func rotate(_ piece: Piece, clockwise: Bool, on board: Board) -> Result? {
+        guard piece.shard.shape != .spark else { return nil }
         let target = clockwise ? piece.state.clockwise : piece.state.counterClockwise
-        let table = piece.type == .i ? iKicks : standardKicks
-        guard let offsets = table[Transition(from: piece.state, to: target)] else { return nil }
-
-        for (index, offset) in offsets.enumerated() {
-            // The published tables use y-up; the board is y-down, so flip y.
-            let candidate = Piece(type: piece.type,
-                                  state: target,
-                                  origin: Point(x: piece.origin.x + offset.x,
-                                                y: piece.origin.y - offset.y))
+        let turned = piece.rotated(to: target)
+        for (index, kick) in kicks.enumerated() {
+            let candidate = turned.moved(dx: kick.x, dy: kick.y)
             if board.canPlace(candidate) {
                 return Result(piece: candidate, kickIndex: index)
             }
         }
         return nil
     }
-
-    private struct Transition: Hashable {
-        let from: RotationState
-        let to: RotationState
-    }
-
-    private typealias Offset = (x: Int, y: Int)
-
-    private static let standardKicks: [Transition: [Offset]] = [
-        Transition(from: .spawn, to: .right):     [(0, 0), (-1, 0), (-1, 1), (0, -2), (-1, -2)],
-        Transition(from: .right, to: .spawn):     [(0, 0), (1, 0), (1, -1), (0, 2), (1, 2)],
-        Transition(from: .right, to: .flipped):   [(0, 0), (1, 0), (1, -1), (0, 2), (1, 2)],
-        Transition(from: .flipped, to: .right):   [(0, 0), (-1, 0), (-1, 1), (0, -2), (-1, -2)],
-        Transition(from: .flipped, to: .left):    [(0, 0), (1, 0), (1, 1), (0, -2), (1, -2)],
-        Transition(from: .left, to: .flipped):    [(0, 0), (-1, 0), (-1, -1), (0, 2), (-1, 2)],
-        Transition(from: .left, to: .spawn):      [(0, 0), (-1, 0), (-1, -1), (0, 2), (-1, 2)],
-        Transition(from: .spawn, to: .left):      [(0, 0), (1, 0), (1, 1), (0, -2), (1, -2)]
-    ]
-
-    private static let iKicks: [Transition: [Offset]] = [
-        Transition(from: .spawn, to: .right):     [(0, 0), (-2, 0), (1, 0), (-2, -1), (1, 2)],
-        Transition(from: .right, to: .spawn):     [(0, 0), (2, 0), (-1, 0), (2, 1), (-1, -2)],
-        Transition(from: .right, to: .flipped):   [(0, 0), (-1, 0), (2, 0), (-1, 2), (2, -1)],
-        Transition(from: .flipped, to: .right):   [(0, 0), (1, 0), (-2, 0), (1, -2), (-2, 1)],
-        Transition(from: .flipped, to: .left):    [(0, 0), (2, 0), (-1, 0), (2, 1), (-1, -2)],
-        Transition(from: .left, to: .flipped):    [(0, 0), (-2, 0), (1, 0), (-2, -1), (1, 2)],
-        Transition(from: .left, to: .spawn):      [(0, 0), (1, 0), (-2, 0), (1, -2), (-2, 1)],
-        Transition(from: .spawn, to: .left):      [(0, 0), (-1, 0), (2, 0), (-1, 2), (2, -1)]
-    ]
 }

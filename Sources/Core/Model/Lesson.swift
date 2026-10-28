@@ -1,46 +1,53 @@
 import Foundation
 
-/// One guided practice drill: a prepared stack, a short fixed run of
-/// pieces and a single technique to pull off with them. Lessons go from
-/// the first hard drop up to back-to-back quads, so the scoring ideas in
-/// How to play can be tried on a board built to make them possible.
+/// One guided practice drill: a prepared well, a short fixed run of shards
+/// and a single idea to pull off with them. Lessons go from the first drop
+/// to cascades and the core pulse, so each rule in How to play can be tried
+/// on a well built to make it possible.
 struct Lesson: Identifiable, Equatable {
 
     enum Goal: Equatable {
-        /// Clear at least one row.
-        case clearLine
-        /// Put the first piece on hold, then clear a row.
-        case holdThenClear
-        /// Clear this many rows with a single piece.
-        case clearAtOnce(Int)
-        /// Clear rows with a T-spin.
-        case tSpinClear
-        /// Keep a combo going for this many pieces after the first clear.
-        case combo(Int)
-        /// Follow one difficult clear with another.
-        case backToBack
+        /// Close at least one full ring.
+        case clearRing
+        /// Fuse an arc of one colour.
+        case clearArc
+        /// Set off a cascade at least this many links long.
+        case chain(Int)
+        /// Spend the core charge.
+        case pulse
     }
 
     let id: String
     let titleKey: LocKey
     let instructionKey: LocKey
     let goal: Goal
-    /// Every piece the lesson deals, in order. Running out without meeting
+    /// Every shard the lesson deals, in order. Running out without meeting
     /// the goal fails the attempt.
-    let pieces: [TetrominoType]
-    /// The prepared stack from the floor upwards, `X` for a block and `.`
-    /// for a gap. Ten characters per row.
-    let rows: [String]
+    let pieces: [Shard]
+    /// The prepared well from the core outwards, one character per sector:
+    /// `e` ember, `a` amber, `t` tide and `.` for a gap. Sixteen per ring.
+    let rings: [String]
+    /// Whether the core starts fully charged.
+    var charged = false
 
     var board: Board {
         var board = Board()
-        for (offset, row) in rows.enumerated() {
-            let y = Board.rows - 1 - offset
-            for (x, mark) in row.enumerated() where mark == "X" {
-                board[x, y] = .z
+        for (offset, ring) in rings.enumerated() {
+            let y = Board.rings - 1 - offset
+            for (x, mark) in ring.enumerated() {
+                board[x, y] = Lesson.color(for: mark)
             }
         }
         return board
+    }
+
+    private static func color(for mark: Character) -> ShardColor? {
+        switch mark {
+        case "e": return .ember
+        case "a": return .amber
+        case "t": return .tide
+        default: return nil
+        }
     }
 
     var next: Lesson? {
@@ -51,47 +58,38 @@ struct Lesson: Identifiable, Equatable {
 
     static let all: [Lesson] = [
         Lesson(id: "drop", titleKey: .lessonDrop, instructionKey: .lessonDropHint,
-               goal: .clearLine, pieces: [.i],
-               rows: ["XXX....XXX"]),
+               goal: .clearRing, pieces: [Shard(shape: .duo, color: .amber)],
+               rings: ["..tetatetatetate"]),
+        Lesson(id: "spin", titleKey: .lessonSpin, instructionKey: .lessonSpinHint,
+               goal: .clearRing, pieces: [Shard(shape: .duo, color: .amber)],
+               rings: ["tetateta..tetate"]),
         Lesson(id: "rotate", titleKey: .lessonRotate, instructionKey: .lessonRotateHint,
-               goal: .clearLine, pieces: [.i],
-               rows: ["XXXXXXXXX."]),
-        Lesson(id: "hold", titleKey: .lessonHold, instructionKey: .lessonHoldHint,
-               goal: .holdThenClear, pieces: [.o, .i],
-               rows: ["XXX....XXX"]),
-        Lesson(id: "quad", titleKey: .lessonQuad, instructionKey: .lessonQuadHint,
-               goal: .clearAtOnce(4), pieces: [.i],
-               rows: ["X.XXXXXXXX",
-                      "XXXXXXX.XX",
-                      ".XXXXXXXXX",
-                      ".XXXXXXXXX",
-                      ".XXXXXXXXX",
-                      ".XXXXXXXXX"]),
-        Lesson(id: "tspin", titleKey: .lessonTSpin, instructionKey: .lessonTSpinHint,
-               goal: .tSpinClear, pieces: [.t],
-               rows: ["XXXX.XXXXX",
-                      "XXX...XXXX",
-                      "XXX..XXXXX"]),
-        Lesson(id: "combo", titleKey: .lessonCombo, instructionKey: .lessonComboHint,
-               goal: .combo(2), pieces: [.o, .o, .o],
-               rows: ["..XXXXXXXX",
-                      "..XXXXXXXX",
-                      "..XXXXXXXX",
-                      "..XXXXXXXX",
-                      "..XXXXXXXX",
-                      "..XXXXXXXX"]),
-        Lesson(id: "b2b", titleKey: .lessonBackToBack, instructionKey: .lessonBackToBackHint,
-               goal: .backToBack, pieces: [.i, .i],
-               rows: Array(repeating: "XXXXXXXXX.", count: 8))
+               goal: .clearRing, pieces: [Shard(shape: .duo, color: .tide)],
+               rings: ["teta.atetatetate",
+                       "etat.tetatetatet"]),
+        Lesson(id: "arc", titleKey: .lessonArc, instructionKey: .lessonArcHint,
+               goal: .clearArc, pieces: [Shard(shape: .duo, color: .amber)],
+               rings: ["..aaatetet.tetet"]),
+        Lesson(id: "chain", titleKey: .lessonChain, instructionKey: .lessonChainHint,
+               goal: .chain(2), pieces: [Shard(shape: .duo, color: .amber)],
+               rings: ["..aaattte.etaeae",
+                       "..ttt..........."]),
+        Lesson(id: "pulse", titleKey: .lessonPulse, instructionKey: .lessonPulseHint,
+               goal: .pulse,
+               pieces: Array(repeating: Shard(shape: .spark, color: .ember), count: 3),
+               rings: ["teta.etat.eta.et",
+                       "a.et.at.ea.te.ta",
+                       "et.a.te..at.e.t."],
+               charged: true)
     ]
 }
 
-/// Deals a lesson's pieces in its fixed order, over and over. The tracker
+/// Deals a lesson's shards in its fixed order, over and over. The tracker
 /// ends the attempt once the real ones are used up, so the repeats only
 /// keep the preview queue full.
 struct LessonPieces: PieceRandomSource {
-    let order: [TetrominoType]
-    func shuffle(_ pieces: inout [TetrominoType]) { pieces = order }
+    let order: [Shard]
+    func shuffle(_ shards: inout [Shard]) { shards = order }
 }
 
 /// Watches the engine's events and decides when a lesson is won or lost.
@@ -106,7 +104,6 @@ struct LessonTracker {
     let lesson: Lesson
     private(set) var outcome: Outcome = .inProgress
     private var locked = 0
-    private var held = false
 
     init(lesson: Lesson) {
         self.lesson = lesson
@@ -115,9 +112,9 @@ struct LessonTracker {
     mutating func observe(_ event: GameEvent) {
         guard outcome == .inProgress else { return }
         switch event {
-        case .holdSwapped:
-            held = true
-        case let .linesCleared(_, result) where meetsGoal(result):
+        case let .cleared(_, _, result) where meetsGoal(result):
+            outcome = .passed
+        case .pulsed where lesson.goal == .pulse:
             outcome = .passed
         case .locked:
             locked += 1
@@ -128,20 +125,21 @@ struct LessonTracker {
         }
     }
 
-    /// Called once the frame's events are in, so a clear reported after its
-    /// lock still counts before the attempt is judged out of pieces.
-    mutating func settle() {
-        if outcome == .inProgress, locked >= lesson.pieces.count { outcome = .failed }
+    /// Called once the frame's events are in. An attempt that has used all
+    /// its shards fails, but only after any cascade it started has played
+    /// out, since a later link may still meet the goal.
+    mutating func settle(cascading: Bool) {
+        if outcome == .inProgress, !cascading, locked >= lesson.pieces.count {
+            outcome = .failed
+        }
     }
 
     private func meetsGoal(_ result: ClearOutcome) -> Bool {
         switch lesson.goal {
-        case .clearLine: return result.lines > 0
-        case .holdThenClear: return held && result.lines > 0
-        case let .clearAtOnce(count): return result.lines >= count
-        case .tSpinClear: return result.spin != .none && result.lines > 0
-        case let .combo(length): return result.combo >= length
-        case .backToBack: return result.backToBack
+        case .clearRing: return result.rings > 0
+        case .clearArc: return result.arcs > 0
+        case let .chain(length): return result.chain >= length
+        case .pulse: return false
         }
     }
 }

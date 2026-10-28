@@ -1,11 +1,11 @@
 import Foundation
 import Combine
 
-/// Best result for one mode. Marathon and Ultra rank on score, Sprint ranks
-/// on the fastest time to clear its 40 lines.
+/// Best result for one mode. Orbit and Blitz rank on score, Target ranks
+/// on the fastest time to clear its quota of shards.
 struct ModeRecord: Codable, Equatable {
     var score: Int = 0
-    var lines: Int = 0
+    var shards: Int = 0
     var level: Int = 1
     var time: TimeInterval = 0
     var achievedAt: Date = .distantPast
@@ -16,12 +16,13 @@ struct ModeRecord: Codable, Equatable {
 struct LifetimeStats: Codable, Equatable {
     var gamesPlayed = 0
     var piecesPlaced = 0
-    var linesCleared = 0
-    var quads = 0
-    var tSpins = 0
+    var shardsCleared = 0
+    var ringsCleared = 0
+    var arcsFused = 0
+    var pulses = 0
     var timePlayed: TimeInterval = 0
-    /// Longest chain of consecutive clearing pieces across every run.
-    var bestCombo = 0
+    /// Longest cascade across every run.
+    var bestChain = 0
 }
 
 extension LifetimeStats {
@@ -31,11 +32,12 @@ extension LifetimeStats {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         gamesPlayed = try c.decodeIfPresent(Int.self, forKey: .gamesPlayed) ?? 0
         piecesPlaced = try c.decodeIfPresent(Int.self, forKey: .piecesPlaced) ?? 0
-        linesCleared = try c.decodeIfPresent(Int.self, forKey: .linesCleared) ?? 0
-        quads = try c.decodeIfPresent(Int.self, forKey: .quads) ?? 0
-        tSpins = try c.decodeIfPresent(Int.self, forKey: .tSpins) ?? 0
+        shardsCleared = try c.decodeIfPresent(Int.self, forKey: .shardsCleared) ?? 0
+        ringsCleared = try c.decodeIfPresent(Int.self, forKey: .ringsCleared) ?? 0
+        arcsFused = try c.decodeIfPresent(Int.self, forKey: .arcsFused) ?? 0
+        pulses = try c.decodeIfPresent(Int.self, forKey: .pulses) ?? 0
         timePlayed = try c.decodeIfPresent(TimeInterval.self, forKey: .timePlayed) ?? 0
-        bestCombo = try c.decodeIfPresent(Int.self, forKey: .bestCombo) ?? 0
+        bestChain = try c.decodeIfPresent(Int.self, forKey: .bestChain) ?? 0
     }
 }
 
@@ -89,20 +91,21 @@ final class StatsStore: ObservableObject {
     @discardableResult
     func submit(mode: GameMode,
                 score: Int,
-                lines: Int,
+                shards: Int,
                 level: Int,
                 time: TimeInterval,
                 reason: GameOverReason,
                 runStats: RunStats) -> Bool {
         lifetime.gamesPlayed += 1
         lifetime.piecesPlaced += runStats.piecesPlaced
-        lifetime.linesCleared += runStats.linesCleared
-        lifetime.quads += runStats.quads
-        lifetime.tSpins += runStats.tSpins
+        lifetime.shardsCleared += runStats.shardsCleared
+        lifetime.ringsCleared += runStats.ringsCleared
+        lifetime.arcsFused += runStats.arcsFused
+        lifetime.pulses += runStats.pulses
         lifetime.timePlayed += time
-        lifetime.bestCombo = max(lifetime.bestCombo, runStats.maxCombo)
+        lifetime.bestChain = max(lifetime.bestChain, runStats.maxChain)
 
-        let candidate = ModeRecord(score: score, lines: lines, level: level,
+        let candidate = ModeRecord(score: score, shards: shards, level: level,
                                    time: time, achievedAt: Date())
         let beaten = isBetter(candidate, than: records[mode], mode: mode, reason: reason)
         if beaten { records[mode] = candidate }
@@ -135,7 +138,7 @@ final class StatsStore: ObservableObject {
             guard let existing, existing.isSet else { return true }
             return candidate.score > existing.score
         case .fastestTime:
-            // An unfinished Sprint has no meaningful time to record.
+            // An unfinished Target run has no meaningful time to record.
             guard reason == .targetReached else { return false }
             guard let existing, existing.isSet else { return true }
             return candidate.time < existing.time

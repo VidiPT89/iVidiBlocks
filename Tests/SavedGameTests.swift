@@ -4,8 +4,8 @@ import XCTest
 /// Deals every bag in the same order, so two engines stay in step however
 /// many bags they draw.
 private struct SameEveryBag: PieceRandomSource {
-    func shuffle(_ pieces: inout [TetrominoType]) {
-        pieces = [.i, .o, .t, .s, .z, .j, .l]
+    func shuffle(_ shards: inout [Shard]) {
+        shards = Shard.all
     }
 }
 
@@ -25,7 +25,7 @@ final class SavedGameTests: XCTestCase {
         try? FileManager.default.removeItem(at: fileURL)
     }
 
-    private func playing(_ mode: GameMode = .marathon, seed: UInt64 = 7) -> GameEngine {
+    private func playing(_ mode: GameMode = .orbit, seed: UInt64 = 7) -> GameEngine {
         let engine = GameEngine(mode: mode, random: SeededPieceRandom(seed: seed))
         engine.startImmediately()
         return engine
@@ -42,14 +42,14 @@ final class SavedGameTests: XCTestCase {
     // MARK: Engine
 
     func testNothingIsSavedBeforeTheFirstPieceOrAfterTheEnd() {
-        let engine = GameEngine(mode: .marathon)
+        let engine = GameEngine(mode: .orbit)
         XCTAssertNil(engine.snapshot())
         engine.pause()
         XCTAssertNil(engine.snapshot(), "pausing the countdown leaves nothing to resume")
 
         var blocked = Board()
-        for y in 0..<4 { for x in 0..<Board.columns { blocked[x, y] = .z } }
-        let over = GameEngine(mode: .marathon, board: blocked)
+        for y in 0..<Board.rings { blocked[0, y] = .tide }
+        let over = GameEngine(mode: .orbit, board: blocked)
         over.startImmediately()
         XCTAssertNil(over.snapshot())
     }
@@ -58,7 +58,6 @@ final class SavedGameTests: XCTestCase {
         let engine = playing()
         engine.move(dx: -1)
         engine.hardDrop()
-        engine.hold()
         engine.rotate(clockwise: true)
         advance(engine, by: 0.3)
         engine.pause()
@@ -74,14 +73,13 @@ final class SavedGameTests: XCTestCase {
         XCTAssertEqual(again, saved)
         XCTAssertEqual(restored.preview, engine.preview)
         XCTAssertEqual(restored.ghost, engine.ghost)
-        XCTAssertFalse(restored.canHold, "hold was already spent on this piece")
 
         restored.resume()
         XCTAssertEqual(restored.phase, .playing)
     }
 
     func testARestoredRunPlaysOnIdenticallyToTheOriginal() throws {
-        let engine = GameEngine(mode: .marathon, random: SameEveryBag())
+        let engine = GameEngine(mode: .orbit, random: SameEveryBag())
         engine.startImmediately()
         for _ in 0..<5 { engine.hardDrop() }
         let saved = try XCTUnwrap(engine.snapshot())
@@ -98,17 +96,14 @@ final class SavedGameTests: XCTestCase {
         XCTAssertEqual(restored.board.cells, engine.board.cells)
         XCTAssertEqual(restored.score, engine.score)
         XCTAssertEqual(restored.current, engine.current)
-        XCTAssertEqual(restored.holdPiece, engine.holdPiece)
+        XCTAssertEqual(restored.charge, engine.charge)
     }
 
     func testARunSavedMidClearFinishesTheClearOnResume() throws {
-        var board = Board()
-        for x in 0..<(Board.columns - 1) { board[x, Board.rows - 1] = .z }
-        let engine = GameEngine(mode: .sprint, random: SameEveryBag(), board: board)
+        let lesson = try XCTUnwrap(Lesson.all.first { $0.goal == .chain(2) })
+        let engine = GameEngine(mode: .target, random: LessonPieces(order: lesson.pieces),
+                                board: lesson.board)
         engine.startImmediately()
-        // Stand the I piece upright in the gap on the right wall.
-        engine.rotate(clockwise: true)
-        while engine.move(dx: 1) {}
         engine.hardDrop()
         XCTAssertEqual(engine.phase, .clearing)
         engine.pause()
@@ -119,8 +114,9 @@ final class SavedGameTests: XCTestCase {
         restored.resume()
         XCTAssertEqual(restored.phase, .clearing)
         advance(restored, by: GameEngine.clearDuration + 0.05)
-        XCTAssertEqual(restored.phase, .playing)
-        XCTAssertEqual(restored.lines, saved.lines + saved.pendingClearRows.count)
+        XCTAssertEqual(restored.phase, .clearing, "the cascade's second link follows")
+        XCTAssertEqual(restored.chain, 2)
+        XCTAssertEqual(restored.shards, saved.shards + saved.pendingClear.count)
     }
 
     func testImpossibleSnapshotsAreRefused() throws {
@@ -137,7 +133,7 @@ final class SavedGameTests: XCTestCase {
 
         broken = saved
         if let piece = saved.current {
-            for cell in piece.cells { broken.cells[cell.y * Board.columns + cell.x] = .o }
+            for cell in piece.cells { broken.cells[cell.y * Board.sectors + cell.x] = .amber }
         }
         XCTAssertNil(GameEngine(restoring: broken), "a piece inside the stack")
 
@@ -146,27 +142,36 @@ final class SavedGameTests: XCTestCase {
         XCTAssertNil(GameEngine(restoring: broken), "no piece and nothing clearing")
 
         broken = saved
-        broken.lines = 30
-        XCTAssertNil(GameEngine(restoring: broken), "a level that does not follow the lines")
+        broken.shards = 200
+        XCTAssertNil(GameEngine(restoring: broken), "a level that does not follow the shards")
 
         broken = saved
-        broken.mode = .sprint
-        broken.lines = 40
-        XCTAssertNil(GameEngine(restoring: broken), "a Sprint that already reached its target")
+        broken.mode = .target
+        broken.shards = 160
+        XCTAssertNil(GameEngine(restoring: broken), "a Target run that already reached its quota")
 
         broken = saved
-        broken.mode = .ultra
-        broken.elapsed = 180
-        XCTAssertNil(GameEngine(restoring: broken), "an Ultra clock that already ran out")
+        broken.mode = .blitz
+        broken.elapsed = 120
+        XCTAssertNil(GameEngine(restoring: broken), "a Blitz clock that already ran out")
+
+        broken = saved
+        broken.charge = GameEngine.pulseCost + 1
+        XCTAssertNil(GameEngine(restoring: broken), "more charge than the core holds")
+
+        broken = saved
+        broken.aim = Board.sectors
+        XCTAssertNil(GameEngine(restoring: broken), "an aim off the circle")
 
         broken = saved
         broken.elapsed = .nan
         XCTAssertNil(GameEngine(restoring: broken))
 
         broken = saved
-        broken.pendingClearRows = [Board.rows - 1]
+        broken.pendingClear = [Point(x: 0, y: Board.rings - 1)]
+        broken.chain = 1
         broken.current = nil
-        XCTAssertNil(GameEngine(restoring: broken), "a clear of a row that is not full")
+        XCTAssertNil(GameEngine(restoring: broken), "a clear of cells that would not clear")
     }
 
     func testCurrentSettingsApplyButTheStartLevelIsKept() throws {

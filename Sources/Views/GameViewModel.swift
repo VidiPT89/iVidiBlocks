@@ -2,8 +2,7 @@ import SwiftUI
 import Combine
 
 /// A short-lived caption shown over the board after a notable clear.
-struct Banner: Identifiable, Equatable {
-    let id = UUID()
+struct Banner {
     let text: String
     let accent: BannerAccent
     var detail: String?
@@ -35,6 +34,7 @@ final class GameViewModel: ObservableObject {
     @Published private(set) var level = 1
     @Published private(set) var combo = 0
     @Published private(set) var backToBack = false
+    @Published private(set) var canHold = false
     @Published private(set) var holdPiece: TetrominoType?
     @Published private(set) var preview: [TetrominoType] = []
     @Published private(set) var elapsed: TimeInterval = 0
@@ -59,6 +59,7 @@ final class GameViewModel: ObservableObject {
     private let audio: AudioManager
     private let haptics: HapticsManager
     private let localization: LocalizationManager
+    private var heldDirections: [Int] = []
     private var bannerDismiss: Task<Void, Never>?
 
     init(mode: GameMode,
@@ -88,6 +89,8 @@ final class GameViewModel: ObservableObject {
     /// the settings say now.
     func restart() {
         bannerDismiss?.cancel()
+        heldDirections = []
+        canHold = false
         engine = GameEngine(mode: mode, config: settings.gameConfig)
         haptics.enabled = settings.hapticsEnabled
         audio.sfxEnabled = settings.sfxEnabled
@@ -114,16 +117,22 @@ final class GameViewModel: ObservableObject {
     /// Copies engine state into published properties once per frame. Each
     /// assignment is guarded so an unchanged value never republishes and
     /// forces SwiftUI to redraw the HUD for nothing.
-    func syncFromEngine() {
+    func syncFromEngine(_ source: GameEngine) {
+        guard source === engine else { return }
         if score != engine.score { score = engine.score }
         if lines != engine.lines { lines = engine.lines }
         if level != engine.level { level = engine.level }
         if combo != max(engine.combo, 0) { combo = max(engine.combo, 0) }
         if backToBack != engine.backToBack { backToBack = engine.backToBack }
+        if canHold != engine.canHold { canHold = engine.canHold }
         if holdPiece != engine.holdPiece { holdPiece = engine.holdPiece }
         if preview != engine.preview { preview = engine.preview }
-        if elapsed != engine.elapsed { elapsed = engine.elapsed }
-        if timeRemaining != engine.timeRemaining { timeRemaining = engine.timeRemaining }
+        // Only Sprint displays elapsed time. Ultra displays whole seconds;
+        // Marathon needs no clock-driven SwiftUI updates at all.
+        let displayElapsed = mode == .sprint ? engine.elapsed : 0
+        let displayRemaining = engine.timeRemaining.map { ceil($0) }
+        if elapsed != displayElapsed { elapsed = displayElapsed }
+        if timeRemaining != displayRemaining { timeRemaining = displayRemaining }
         if linesRemaining != engine.linesRemaining { linesRemaining = engine.linesRemaining }
         if countdownText != readyCaption { countdownText = readyCaption }
     }
@@ -133,7 +142,8 @@ final class GameViewModel: ObservableObject {
         return localization.string(.gameReady)
     }
 
-    func handle(_ event: GameEvent) {
+    func handle(_ event: GameEvent, from source: GameEngine) {
+        guard source === engine else { return }
         switch event {
         case .moved:
             audio.play(.move)
@@ -182,14 +192,13 @@ final class GameViewModel: ObservableObject {
         case .mini, .full: accent = .purple
         }
 
-        var detail: String?
-        if outcome.backToBack {
-            detail = localization.string(.hudBackToBack)
-        } else if outcome.combo > 0 {
-            detail = "\(localization.string(.hudCombo)) \(outcome.combo)"
+        var details = ["+\(outcome.points.formatted())"]
+        if outcome.backToBack { details.append(localization.string(.hudBackToBack)) }
+        if outcome.combo > 0 {
+            details.append("\(localization.string(.hudCombo)) \(outcome.combo)")
         }
-
-        show(Banner(text: localization.string(key), accent: accent, detail: detail))
+        show(Banner(text: localization.string(key), accent: accent,
+                    detail: details.joined(separator: " · ")))
     }
 
     private func show(_ banner: Banner) {
@@ -208,6 +217,7 @@ final class GameViewModel: ObservableObject {
 
     func pause() {
         guard result == nil, !isPaused else { return }
+        heldDirections = []
         engine.pause()
         isPaused = true
         audio.pauseAll()
@@ -220,7 +230,14 @@ final class GameViewModel: ObservableObject {
         audio.resumeAll()
     }
 
-    func horizontalInput(_ direction: Int) { engine.setHorizontalInput(direction) }
+    func horizontalInput(_ direction: Int, pressed: Bool) {
+        guard direction == -1 || direction == 1 else { return }
+        guard !pressed || engine.phase == .playing || engine.phase == .clearing else { return }
+        heldDirections.removeAll { $0 == direction }
+        if pressed { heldDirections.append(direction) }
+        // Most recently pressed wins; releasing it restores the other held key.
+        engine.setHorizontalInput(heldDirections.last ?? 0)
+    }
     func rotateClockwise() { engine.rotate(clockwise: true) }
     func rotateCounterClockwise() { engine.rotate(clockwise: false) }
     func softDrop(_ active: Bool) { engine.setSoftDrop(active) }

@@ -14,8 +14,8 @@ struct AutoShift {
         case slam(Int)
     }
 
-    var das: TimeInterval
-    var arr: TimeInterval
+    let das: TimeInterval
+    let arr: TimeInterval
 
     private(set) var direction = 0
     private var charged = false
@@ -55,20 +55,22 @@ struct AutoShift {
     }
 
     mutating func tick(deltaTime: TimeInterval) -> Shift {
-        guard direction != 0 else { return .stay }
+        guard direction != 0, deltaTime.isFinite, deltaTime > 0 else { return .stay }
 
+        var steps = 0
         if !charged {
             dasTimer += deltaTime
             guard dasTimer >= das else { return .stay }
             charged = true
-            arrTimer = 0
-            return arr <= 0 ? .slam(direction) : .stay
+            // The first repeat belongs exactly at DAS, not DAS + ARR.
+            // Keep the remainder so frame boundaries do not change the speed.
+            steps = 1
+            arrTimer = dasTimer - das
+        } else {
+            arrTimer += deltaTime
         }
 
         guard arr > 0 else { return .slam(direction) }
-
-        var steps = 0
-        arrTimer += deltaTime
         while arrTimer >= arr {
             arrTimer -= arr
             steps += 1

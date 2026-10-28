@@ -88,6 +88,8 @@ final class GameEngine {
         return events
     }
 
+    var canHold: Bool { phase == .playing && !holdUsedThisPiece }
+
     // MARK: Time remaining / progress
 
     var timeRemaining: TimeInterval? {

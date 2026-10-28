@@ -514,4 +514,47 @@ final class GameEngineTests: XCTestCase {
         XCTAssertEqual(engine.score, 1)
     }
 
+    func testSeededMixedInputPreservesBoardAndScoringInvariants() {
+        for mode in GameMode.allCases {
+            for seed in 1...20 {
+                let engine = GameEngine(mode: mode, random: SeededPieceRandom(seed: UInt64(seed)))
+                engine.startImmediately()
+                var random = UInt64(seed)
+                var previousScore = 0
+                var previousLines = 0
+                for _ in 0..<500 {
+                    if case .over = engine.phase { break }
+                    random = random &* 6364136223846793005 &+ 1
+                    switch (random >> 32) % 9 {
+                    case 0: engine.move(dx: -1)
+                    case 1: engine.move(dx: 1)
+                    case 2: engine.rotate(clockwise: true)
+                    case 3: engine.rotate(clockwise: false)
+                    case 4: engine.hardDrop()
+                    case 5: engine.hold()
+                    case 6: engine.softDropStep()
+                    case 7:
+                        let elapsed = engine.elapsed
+                        engine.pause()
+                        engine.update(deltaTime: 2)
+                        XCTAssertEqual(engine.elapsed, elapsed)
+                        engine.resume()
+                    default: break
+                    }
+                    engine.update(deltaTime: 0.05)
+                    XCTAssertEqual(engine.board.cells.count, Board.rows * Board.columns)
+                    XCTAssertEqual(engine.preview.count, RandomBag.previewCount)
+                    XCTAssertGreaterThanOrEqual(engine.score, previousScore)
+                    XCTAssertGreaterThanOrEqual(engine.lines, previousLines)
+                    if let piece = engine.current { XCTAssertTrue(engine.board.canPlace(piece)) }
+                    if let ghost = engine.ghost, let piece = engine.current {
+                        XCTAssertEqual(ghost, engine.board.hardDropPosition(of: piece))
+                    }
+                    previousScore = engine.score
+                    previousLines = engine.lines
+                }
+            }
+        }
+    }
+
 }

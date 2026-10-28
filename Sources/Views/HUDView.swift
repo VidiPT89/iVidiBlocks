@@ -19,17 +19,22 @@ struct HUDView: View {
     // MARK: Hold
 
     private var holdSlot: some View {
-        panel(title: loc.string(.hudHold)) {
-            ZStack {
-                if let hold = model.holdPiece {
-                    PieceThumbnail(type: hold, cellSize: 10,
-                                   showGlyph: settings.colorBlindMode)
-                        .transition(.scale.combined(with: .opacity))
+        Button(action: model.hold) {
+            panel(title: loc.string(.hudHold)) {
+                ZStack {
+                    if let hold = model.holdPiece {
+                        PieceThumbnail(type: hold, cellSize: 10,
+                                       showGlyph: settings.colorBlindMode)
+                            .transition(.scale.combined(with: .opacity))
+                    }
                 }
+                .frame(width: 44, height: 26)
+                .animation(.spring(response: 0.3, dampingFraction: 0.7), value: model.holdPiece)
             }
-            .frame(width: 44, height: 26)
-            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: model.holdPiece)
         }
+        .buttonStyle(.plain)
+        .disabled(!model.canHold)
+        .opacity(model.canHold ? 1 : 0.45)
         .accessibilityLabel(loc.string(.hudHold))
     }
 
@@ -140,6 +145,8 @@ struct HUDView: View {
             Text(title.uppercased())
                 .font(.system(size: 9, weight: .bold, design: .rounded))
                 .tracking(0.8)
+                .lineLimit(1)
+                .minimumScaleFactor(0.65)
                 .foregroundStyle(Color.textSecondary)
             content()
         }
@@ -166,7 +173,8 @@ struct BannerView: View {
             if let detail = banner.detail {
                 Text(detail.uppercased())
                     .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .tracking(1.6)
+                    .tracking(0.5)
+                    .multilineTextAlignment(.center)
                     .foregroundStyle(Color.textPrimary.opacity(0.85))
             }
         }

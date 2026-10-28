@@ -130,4 +130,27 @@ final class AutoShiftTests: XCTestCase {
         }
         XCTAssertEqual(amount, 4)
     }
+    func testFirstRepeatArrivesAtDASWithoutAnExtraARRDelay() {
+        var machine = shift()
+        _ = machine.setDirection(1)
+        XCTAssertEqual(machine.tick(deltaTime: das), .step(1))
+        XCTAssertEqual(machine.tick(deltaTime: arr), .step(1))
+    }
+
+    func testFrameCrossingDASKeepsItsRemainingRepeatTime() {
+        var machine = shift()
+        _ = machine.setDirection(-1)
+        XCTAssertEqual(machine.tick(deltaTime: das + arr * 2.5), .step(-3))
+        XCTAssertEqual(machine.tick(deltaTime: arr * 0.6), .step(-1))
+    }
+
+    func testInvalidDurationsCannotPoisonTheRepeatClock() {
+        var machine = shift()
+        _ = machine.setDirection(1)
+        for delta in [-1.0, .nan, .infinity, 0] {
+            XCTAssertEqual(machine.tick(deltaTime: delta), .stay)
+        }
+        XCTAssertEqual(machine.tick(deltaTime: das), .step(1))
+    }
+
 }

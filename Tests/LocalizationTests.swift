@@ -84,6 +84,14 @@ final class LocalizationTests: XCTestCase {
 }
 
 final class TimeFormatTests: XCTestCase {
+    func testClockKeepsTheHundredthsItWasGiven() {
+        XCTAssertEqual(TimeFormat.clock(92.41), "1:32.41")
+        XCTAssertEqual(TimeFormat.clock(0.29), "0:00.29")
+        XCTAssertEqual(TimeFormat.clock(59.999), "0:59.99")
+        XCTAssertEqual(TimeFormat.clock(3_600), "60:00.00")
+        XCTAssertEqual(TimeFormat.clock(-5), "0:00.00")
+    }
+
     func testCountdownDoesNotShowZeroBeforeTheDeadline() {
         XCTAssertEqual(TimeFormat.countdown(180), "3:00")
         XCTAssertEqual(TimeFormat.countdown(179.99), "3:00")

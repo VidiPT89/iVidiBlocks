@@ -46,6 +46,7 @@
 		BFC269D830C97E2A710A85E2 /* BrandControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8CD64792C08777AD7A2AE6A /* BrandControls.swift */; };
 		C1C61B8A68671FE6CAAC8C76 /* HUDView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA87A2E9AAF78CE71BF63AFF /* HUDView.swift */; };
 		C32D2426A0CA80EA5DA67B98 /* GameState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07E8704ED0BEB160B8F4FDEB /* GameState.swift */; };
+		C76D7937631E0E9B91201000 /* StoreScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE8A259A75E2799A963A86A3 /* StoreScreenshotTests.swift */; };
 		C8CC841F1F822C7ED24F86B4 /* MainMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E30644A2A4C035F3ACC507F8 /* MainMenuView.swift */; };
 		CB02D0C9ABE4E5817226FA75 /* GameEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 054EB8BC5D9A13B4C1F64ED5 /* GameEngine.swift */; };
 		CB72456FD9C641859322786B /* ToneSynth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02711CE6C50B7F2252022309 /* ToneSynth.swift */; };
@@ -123,6 +124,7 @@
 		ABB286718B46B80566336AD6 /* GameMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameMode.swift; sourceTree = "<group>"; };
 		ABDA179098EBD05FFE2AD5AE /* RandomBag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RandomBag.swift; sourceTree = "<group>"; };
 		CDDF3031D71B51096CBADE8D /* Lesson.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Lesson.swift; sourceTree = "<group>"; };
+		CE8A259A75E2799A963A86A3 /* StoreScreenshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreScreenshotTests.swift; sourceTree = "<group>"; };
 		D2B9A658EFFA6AE367B29670 /* StatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsView.swift; sourceTree = "<group>"; };
 		DA0C0453DE0A1F4B36DF74FE /* iVidiBlocksApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iVidiBlocksApp.swift; sourceTree = "<group>"; };
 		DEA123B9B115634A9C715F44 /* GameViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameViewModelTests.swift; sourceTree = "<group>"; };
@@ -250,6 +252,7 @@
 				60A32FB35E81F10689DC6723 /* SettingsStoreTests.swift */,
 				6990932A7FCF0083063517C8 /* SpinDetectorTests.swift */,
 				A26C7AFDC50CA98CF1F1D790 /* StatsStoreTests.swift */,
+				CE8A259A75E2799A963A86A3 /* StoreScreenshotTests.swift */,
 			);
 			path = Tests;
 			sourceTree = "<group>";
@@ -361,6 +364,14 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					E0434252C93BCD759D009D0A = {
+						DevelopmentTeam = S769436W24;
+						ProvisioningStyle = Automatic;
+					};
+					FA986ECA96E74AA0BF193BEB = {
+						DevelopmentTeam = S769436W24;
+						ProvisioningStyle = Automatic;
+					};
 				};
 			};
 			buildConfigurationList = 4243EA11D5A344789E632C14 /* Build configuration list for PBXProject "iVidiBlocks" */;
@@ -416,6 +427,7 @@
 				6368F116E43024DE270182CD /* SettingsStoreTests.swift in Sources */,
 				D9B0EA1464C5161D8EBF07DC /* SpinDetectorTests.swift in Sources */,
 				97144A00E390110430B69344 /* StatsStoreTests.swift in Sources */,
+				C76D7937631E0E9B91201000 /* StoreScreenshotTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -522,9 +534,11 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = S769436W24;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -607,9 +621,11 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = S769436W24;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;

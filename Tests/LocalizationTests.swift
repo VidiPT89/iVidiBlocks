@@ -1,5 +1,5 @@
 import XCTest
-@testable import iTetris
+@testable import iVidiBlocks
 
 /// Guards the three places a string has to exist: the `LocKey` enum and both
 /// `.lproj` tables. A key that is missing from one of them shows up in the app

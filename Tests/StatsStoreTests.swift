@@ -1,5 +1,5 @@
 import XCTest
-@testable import iTetris
+@testable import iVidiBlocks
 
 final class StatsStoreTests: XCTestCase {
 
@@ -92,7 +92,7 @@ final class StatsStoreTests: XCTestCase {
 
     func testLifetimeTotalsAccumulateEvenForScorelessRuns() {
         let store = store()
-        let run = RunStats(piecesPlaced: 40, linesCleared: 6, tetrises: 1, tSpins: 2, maxCombo: 3)
+        let run = RunStats(piecesPlaced: 40, linesCleared: 6, quads: 1, tSpins: 2, maxCombo: 3)
 
         submit(store, score: 0, time: 30, runStats: run)
         submit(store, score: 500, time: 45, runStats: run)
@@ -100,7 +100,7 @@ final class StatsStoreTests: XCTestCase {
         XCTAssertEqual(store.lifetime.gamesPlayed, 2)
         XCTAssertEqual(store.lifetime.piecesPlaced, 80)
         XCTAssertEqual(store.lifetime.linesCleared, 12)
-        XCTAssertEqual(store.lifetime.tetrises, 2)
+        XCTAssertEqual(store.lifetime.quads, 2)
         XCTAssertEqual(store.lifetime.tSpins, 4)
         XCTAssertEqual(store.lifetime.timePlayed, 75)
     }

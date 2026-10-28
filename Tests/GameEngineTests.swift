@@ -1,5 +1,5 @@
 import XCTest
-@testable import iTetris
+@testable import iVidiBlocks
 
 /// Hands out the seven pieces in a fixed order so a test can rely on
 /// exactly which piece is falling.

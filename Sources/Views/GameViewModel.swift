@@ -44,6 +44,10 @@ final class GameViewModel: ObservableObject {
     @Published private(set) var banner: Banner?
     @Published private(set) var result: GameResult?
     @Published private(set) var countdownText: String?
+    /// The current practice drill, or `nil` in a normal run.
+    @Published private(set) var lesson: Lesson?
+    /// Set once a practice attempt has been won or lost.
+    @Published private(set) var lessonOutcome: LessonTracker.Outcome?
 
     struct GameResult: Equatable {
         let reason: GameOverReason
@@ -62,6 +66,8 @@ final class GameViewModel: ObservableObject {
     private let localization: LocalizationManager
     private var heldDirections: [Int] = []
     private var bannerDismiss: Task<Void, Never>?
+    private var tracker: LessonTracker?
+    private var lessonVerdict: Task<Void, Never>?
 
     init(mode: GameMode,
          settings: SettingsStore,
@@ -70,7 +76,8 @@ final class GameViewModel: ObservableObject {
          audio: AudioManager,
          haptics: HapticsManager,
          localization: LocalizationManager,
-         resuming saved: GameSnapshot? = nil) {
+         resuming saved: GameSnapshot? = nil,
+         lesson: Lesson? = nil) {
         self.mode = mode
         self.settings = settings
         self.stats = stats
@@ -78,7 +85,11 @@ final class GameViewModel: ObservableObject {
         self.audio = audio
         self.haptics = haptics
         self.localization = localization
-        if let saved, saved.mode == mode,
+        self.lesson = lesson
+        tracker = lesson.map(LessonTracker.init)
+        if let lesson {
+            engine = Self.makeEngine(for: lesson, config: settings.gameConfig)
+        } else if let saved, saved.mode == mode,
            let restored = GameEngine(restoring: saved, config: settings.gameConfig) {
             engine = restored
         } else {
@@ -89,7 +100,7 @@ final class GameViewModel: ObservableObject {
         audio.sfxEnabled = settings.sfxEnabled
         level = engine.level
         countdownText = readyCaption
-        preview = engine.preview
+        preview = upcomingPieces
         timeRemaining = engine.timeRemaining
         linesRemaining = engine.linesRemaining
 
@@ -101,14 +112,29 @@ final class GameViewModel: ObservableObject {
         }
     }
 
+    /// A drill runs on Marathon rules at level 1, with its own stack and
+    /// pieces. It is never saved or recorded.
+    private static func makeEngine(for lesson: Lesson, config: GameConfig) -> GameEngine {
+        GameEngine(mode: .marathon, config: config,
+                   random: LessonPieces(order: lesson.pieces), board: lesson.board)
+    }
+
     /// Throws the current run away and builds a fresh engine with whatever
     /// the settings say now.
     func restart() {
         bannerDismiss?.cancel()
-        savedGames.clear()
+        lessonVerdict?.cancel()
+        lessonVerdict = nil
         heldDirections = []
         canHold = false
-        engine = GameEngine(mode: mode, config: settings.gameConfig)
+        if let lesson {
+            tracker = LessonTracker(lesson: lesson)
+            lessonOutcome = nil
+            engine = Self.makeEngine(for: lesson, config: settings.gameConfig)
+        } else {
+            savedGames.clear()
+            engine = GameEngine(mode: mode, config: settings.gameConfig)
+        }
         haptics.enabled = settings.hapticsEnabled
         audio.sfxEnabled = settings.sfxEnabled
 
@@ -118,7 +144,7 @@ final class GameViewModel: ObservableObject {
         combo = 0
         backToBack = false
         holdPiece = nil
-        preview = engine.preview
+        preview = upcomingPieces
         elapsed = 0
         timeRemaining = engine.timeRemaining
         linesRemaining = engine.linesRemaining
@@ -143,7 +169,7 @@ final class GameViewModel: ObservableObject {
         if backToBack != engine.backToBack { backToBack = engine.backToBack }
         if canHold != engine.canHold { canHold = engine.canHold }
         if holdPiece != engine.holdPiece { holdPiece = engine.holdPiece }
-        if preview != engine.preview { preview = engine.preview }
+        if preview != upcomingPieces { preview = upcomingPieces }
         // Only Sprint displays elapsed time. Ultra displays whole seconds;
         // Marathon needs no clock-driven SwiftUI updates at all.
         let displayElapsed = mode == .sprint ? engine.elapsed : 0
@@ -152,6 +178,48 @@ final class GameViewModel: ObservableObject {
         if timeRemaining != displayRemaining { timeRemaining = displayRemaining }
         if linesRemaining != engine.linesRemaining { linesRemaining = engine.linesRemaining }
         if countdownText != readyCaption { countdownText = readyCaption }
+        judgeLesson()
+    }
+
+    /// Moves on to the next drill, or stays put after the last one.
+    func startNextLesson() {
+        guard let next = lesson?.next else { return }
+        lesson = next
+        restart()
+    }
+
+    private func judgeLesson() {
+        guard var tracker, lessonOutcome == nil, lessonVerdict == nil else { return }
+        tracker.settle()
+        self.tracker = tracker
+        let outcome = tracker.outcome
+        guard outcome != .inProgress, let lesson else { return }
+
+        if outcome == .passed {
+            stats.completeLesson(lesson)
+            audio.play(.levelUp)
+            haptics.newRecord()
+        } else {
+            haptics.gameOver()
+        }
+        // Long enough for the clear and its banner to land before the card.
+        let source = engine
+        lessonVerdict = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(outcome == .passed ? 900 : 500))
+            guard let self, !Task.isCancelled, source === self.engine else { return }
+            self.lessonVerdict = nil
+            source.pause()
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
+                self.lessonOutcome = outcome
+            }
+        }
+    }
+
+    /// A drill only previews the pieces it still has to deal; the bag's
+    /// filler after them would promise pieces that never come.
+    private var upcomingPieces: [TetrominoType] {
+        guard let lesson else { return engine.preview }
+        return Array(engine.preview.prefix(max(0, lesson.pieces.count - engine.piecesDealt)))
     }
 
     private var readyCaption: String? {
@@ -161,6 +229,7 @@ final class GameViewModel: ObservableObject {
 
     func handle(_ event: GameEvent, from source: GameEngine) {
         guard source === engine else { return }
+        tracker?.observe(event)
         switch event {
         case .moved:
             audio.play(.move)
@@ -186,7 +255,7 @@ final class GameViewModel: ObservableObject {
                         accent: .amber,
                         detail: "\(localization.string(.hudLevel)) \(newLevel)"))
         case let .gameOver(reason):
-            finish(reason: reason)
+            if lesson == nil { finish(reason: reason) }
         case .spawned, .softDropped, .rotationFailed, .holdRejected:
             break
         }
@@ -198,7 +267,7 @@ final class GameViewModel: ObservableObject {
             audio.play(.tSpin)
             haptics.tSpin()
         } else if outcome.lines == 4 {
-            haptics.tetris()
+            haptics.quad()
         }
         if outcome.perfectClear { audio.play(.perfectClear) }
 
@@ -233,7 +302,7 @@ final class GameViewModel: ObservableObject {
     // MARK: Controls
 
     func pause() {
-        guard result == nil, !isPaused else { return }
+        guard result == nil, lessonOutcome == nil, !isPaused else { return }
         heldDirections = []
         engine.pause()
         isPaused = true
@@ -266,6 +335,7 @@ final class GameViewModel: ObservableObject {
     /// Keeps the run for the menu's Continue card. A run still counting in,
     /// or one already over, has nothing worth keeping.
     func saveProgress() {
+        guard lesson == nil else { return }
         if result == nil, let snapshot = engine.snapshot() {
             savedGames.save(snapshot)
         } else {

@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct iTetrisApp: App {
+struct iVidiBlocksApp: App {
     @StateObject private var localization = LocalizationManager()
     @StateObject private var settings = SettingsStore()
     @StateObject private var stats = StatsStore()

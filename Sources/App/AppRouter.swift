@@ -15,6 +15,7 @@ struct AppRouter: View {
     @State private var showingSplash = true
     @State private var activeMode: GameMode?
     @State private var resumingRun: GameSnapshot?
+    @State private var practiceLesson: Lesson?
 
     var body: some View {
         ZStack {
@@ -34,6 +35,7 @@ struct AppRouter: View {
                          haptics: haptics,
                          localization: localization,
                          resuming: resumingRun,
+                         lesson: practiceLesson,
                          onExit: { activeMode = nil })
                     .id(mode)
                     .transition(.asymmetric(
@@ -41,10 +43,15 @@ struct AppRouter: View {
                         removal: .opacity.combined(with: .scale(scale: 0.97))
                     ))
             } else {
-                MainMenuView { mode, saved in
+                MainMenuView(onPlay: { mode, saved in
                     resumingRun = saved
+                    practiceLesson = nil
                     withAnimation(.easeInOut(duration: 0.35)) { activeMode = mode }
-                }
+                }, onPractice: { lesson in
+                    resumingRun = nil
+                    practiceLesson = lesson
+                    withAnimation(.easeInOut(duration: 0.35)) { activeMode = .marathon }
+                })
                 .transition(.opacity)
             }
         }

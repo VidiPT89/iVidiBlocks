@@ -158,7 +158,7 @@ struct HUDView: View {
     }
 }
 
-/// The caption that slides in after a Tetris, T-spin or perfect clear.
+/// The caption that slides in after a quad, T-spin or perfect clear.
 struct BannerView: View {
     let banner: Banner
 

@@ -119,8 +119,8 @@ struct StatsView: View {
                         value: stats.lifetime.piecesPlaced.formatted())
                 StatRow(label: loc.string(.statsLines),
                         value: stats.lifetime.linesCleared.formatted())
-                StatRow(label: loc.string(.statsTetrises),
-                        value: stats.lifetime.tetrises.formatted(),
+                StatRow(label: loc.string(.statsQuads),
+                        value: stats.lifetime.quads.formatted(),
                         highlighted: true)
                 StatRow(label: loc.string(.statsTSpins),
                         value: stats.lifetime.tSpins.formatted(),

@@ -1,5 +1,5 @@
 import XCTest
-@testable import iTetris
+@testable import iVidiBlocks
 
 @MainActor
 final class GameViewModelTests: XCTestCase {
@@ -7,7 +7,8 @@ final class GameViewModelTests: XCTestCase {
     private static let haptics = HapticsManager()
     private func makeModel(_ mode: GameMode = .marathon,
                            savedGames: SavedGameStore? = nil,
-                           resuming saved: GameSnapshot? = nil) -> (GameViewModel, StatsStore) {
+                           resuming saved: GameSnapshot? = nil,
+                           lesson: Lesson? = nil) -> (GameViewModel, StatsStore) {
         let defaults = UserDefaults(suiteName: UUID().uuidString)!
         let settings = SettingsStore(defaults: defaults)
         settings.musicEnabled = false
@@ -21,7 +22,8 @@ final class GameViewModelTests: XCTestCase {
                                   savedGames: store,
                                   audio: Self.audio, haptics: Self.haptics,
                                   localization: LocalizationManager(defaults: defaults),
-                                  resuming: saved)
+                                  resuming: saved,
+                                  lesson: lesson)
         return (model, stats)
     }
 
@@ -151,5 +153,47 @@ final class GameViewModelTests: XCTestCase {
         XCTAssertNotNil(store.snapshot)
         model.handle(.gameOver(reason: .topOut), from: model.engine)
         XCTAssertNil(store.snapshot)
+    }
+
+    // MARK: Practice
+
+    func testAPracticeDrillIsNeitherSavedNorRecorded() async throws {
+        let store = runStore()
+        let lesson = try XCTUnwrap(Lesson.all.first)
+        let (model, stats) = makeModel(savedGames: store, lesson: lesson)
+        model.engine.startImmediately()
+        model.saveProgress()
+        XCTAssertNil(store.snapshot)
+        model.handle(.gameOver(reason: .topOut), from: model.engine)
+        XCTAssertNil(model.result)
+        XCTAssertEqual(stats.lifetime.gamesPlayed, 0)
+    }
+
+    func testADrillPreviewsOnlyThePiecesItStillDeals() async throws {
+        let lesson = try XCTUnwrap(Lesson.all.first { $0.id == "hold" })
+        let (model, _) = makeModel(lesson: lesson)
+        XCTAssertEqual(model.preview, [.o, .i])
+        model.engine.startImmediately()
+        model.syncFromEngine(model.engine)
+        XCTAssertEqual(model.preview, [.i])
+        model.hold()
+        model.syncFromEngine(model.engine)
+        XCTAssertEqual(model.preview, [])
+    }
+
+    func testPassingADrillMarksItDoneAndAnnouncesTheResult() async throws {
+        let lesson = try XCTUnwrap(Lesson.all.first)
+        let (model, stats) = makeModel(lesson: lesson)
+        model.engine.startImmediately()
+        model.engine.hardDrop()
+        for event in model.engine.drainEvents() { model.handle(event, from: model.engine) }
+        model.syncFromEngine(model.engine)
+        XCTAssertTrue(stats.completedLessons.contains(lesson.id))
+        try await Task.sleep(for: .milliseconds(1100))
+        XCTAssertEqual(model.lessonOutcome, .passed)
+
+        model.startNextLesson()
+        XCTAssertEqual(model.lesson, lesson.next)
+        XCTAssertNil(model.lessonOutcome)
     }
 }

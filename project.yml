@@ -1,4 +1,4 @@
-name: iTetris
+name: iVidiBlocks
 options:
   bundleIdPrefix: dev.ividi
   deploymentTarget:
@@ -17,7 +17,7 @@ settings:
       ENABLE_TESTABILITY: YES
 
 targets:
-  iTetris:
+  iVidiBlocks:
     type: application
     platform: iOS
     sources:
@@ -26,42 +26,43 @@ targets:
       path: Sources/Info.plist
       properties:
         UILaunchScreen: {}
-        CFBundleDisplayName: iTetris
+        CFBundleDisplayName: iVidiBlocks
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         UIRequiresFullScreen: true
+        ITSAppUsesNonExemptEncryption: false
         LSApplicationCategoryType: public.app-category.puzzle-games
         NSHumanReadableCopyright: Copyright © David Arsénio Martins
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.ividi.itetris
-        PRODUCT_NAME: iTetris
+        PRODUCT_NAME: iVidiBlocks
         TARGETED_DEVICE_FAMILY: "1,2"
         SUPPORTS_MACCATALYST: false
 
-  iTetrisTests:
+  iVidiBlocksTests:
     type: bundle.unit-test
     platform: iOS
     sources:
       - path: Tests
     dependencies:
-      - target: iTetris
+      - target: iVidiBlocks
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.ividi.itetris.tests
         GENERATE_INFOPLIST_FILE: true
 
 schemes:
-  iTetris:
+  iVidiBlocks:
     build:
       targets:
-        iTetris: all
-        iTetrisTests: [test]
+        iVidiBlocks: all
+        iVidiBlocksTests: [test]
     run:
       config: Debug
     test:
       config: Debug
       targets:
-        - iTetrisTests
+        - iVidiBlocksTests

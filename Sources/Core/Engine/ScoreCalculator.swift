@@ -30,8 +30,8 @@ enum ScoreCalculator {
     /// Score for one clearing step. Every link of a chain multiplies the
     /// whole step, which is what makes setting up cascades worth the risk.
     static func points(cells: Int, rings: Int, arcs: Int, chain: Int, level: Int) -> Int {
-        let base = cells * pointsPerCell + rings * pointsPerRing + arcs * pointsPerArc
-        return base * max(chain, 1) * max(level, 1)
+        let table = [0, 40, 100, 300, 1200]
+        return table[min(max(rings, 0), 4)] * max(level, 1)
     }
 
     /// A pulse pays a little for what it removes, so it rescues a run
@@ -52,7 +52,7 @@ enum ScoreCalculator {
     }
 
     /// Cleared cells needed for each level in Orbit.
-    static let shardsPerLevel = 48
+    static let shardsPerLevel = 10
 
     static func level(forTotalShards shards: Int, startingAt start: Int = 1) -> Int {
         start + shards / shardsPerLevel

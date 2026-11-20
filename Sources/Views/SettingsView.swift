@@ -116,7 +116,7 @@ struct SettingsView: View {
             if settings.colorBlindMode {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 36))], spacing: 10) {
                     ForEach(ShardColor.allCases, id: \.self) { color in
-                        PieceThumbnail(shard: Shard(shape: .duo, color: color), cellSize: 12, showGlyph: true)
+                        PieceThumbnail(shard: Shard(shape: .o, color: color), cellSize: 12, showGlyph: true)
                             .frame(height: 22)
                     }
                 }

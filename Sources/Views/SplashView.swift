@@ -29,10 +29,10 @@ struct SplashView: View {
     @State private var glow: Double = 0
     @State private var finished = false
 
-    private let assembling: [Shard] = [Shard(shape: .bend, color: .ember),
-                                        Shard(shape: .spark, color: .amber),
-                                        Shard(shape: .trio, color: .tide),
-                                        Shard(shape: .duo, color: .ember)]
+    private let assembling: [Shard] = [Shard(shape: .l, color: .ember),
+                                        Shard(shape: .o, color: .amber),
+                                        Shard(shape: .i, color: .tide),
+                                        Shard(shape: .t, color: .ember)]
     private let website = URL(string: "https://ividi.dev/")!
     private let github = URL(string: "https://github.com/VidiPT89/")!
 
@@ -91,7 +91,7 @@ struct SplashView: View {
 
     private var wordmark: some View {
         Text(loc.string(.appName))
-            .font(.display(58))
+            .font(.display(42))
             .foregroundStyle(.brandGradient)
             .overlay { if !reduceMotion { shimmer } }
             .scaleEffect(titleScale)
@@ -107,7 +107,7 @@ struct SplashView: View {
             .rotationEffect(.degrees(18))
             .offset(x: shimmerX)
             .blendMode(.plusLighter)
-            .mask(Text(loc.string(.appName)).font(.display(58)))
+            .mask(Text(loc.string(.appName)).font(.display(42)))
             .allowsHitTesting(false)
     }
 

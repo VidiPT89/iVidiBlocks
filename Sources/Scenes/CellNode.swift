@@ -14,6 +14,7 @@ final class CellNode: SKShapeNode {
     private static var paths: [Int: CGPath] = [:]
 
     private let glyphLabel = SKLabelNode(fontNamed: "HelveticaNeue-Bold")
+    private let inset = SKShapeNode(rectOf: CGSize(width: 12, height: 12))
     private var depth = -1
 
     override init() {
@@ -21,7 +22,10 @@ final class CellNode: SKShapeNode {
         glyphLabel.verticalAlignmentMode = .center
         glyphLabel.horizontalAlignmentMode = .center
         glyphLabel.fontSize = 11
-        glyphLabel.zRotation = -.pi / 2
+        glyphLabel.zRotation = 0
+        inset.strokeColor = .white.withAlphaComponent(0.35)
+        inset.lineWidth = 1
+        addChild(inset)
         addChild(glyphLabel)
     }
 
@@ -29,7 +33,7 @@ final class CellNode: SKShapeNode {
 
     static func path(depth y: Int) -> CGPath {
         if let cached = paths[y] { return cached }
-        let path = WellGeometry.wedgePath(depth: y)
+        let path = CGPath(rect: CGRect(x: -9, y: -9, width: 18, height: 18), transform: nil)
         paths[y] = path
         return path
     }
@@ -39,10 +43,11 @@ final class CellNode: SKShapeNode {
         if depth != cell.y {
             depth = cell.y
             path = CellNode.path(depth: cell.y)
-            glyphLabel.position = CGPoint(x: WellGeometry.midRadius(depth: cell.y), y: 0)
+            glyphLabel.position = .zero
         }
-        zRotation = WellGeometry.angle(sector: CGFloat(cell.x))
-        isAntialiased = true
+        zRotation = 0
+        position = WellGeometry.position(of: cell, rotation: 0)
+        isAntialiased = false
 
         switch style {
         case .solid:
@@ -57,6 +62,7 @@ final class CellNode: SKShapeNode {
             glowWidth = 0
         }
 
+        inset.isHidden = style == .ghost
         glyphLabel.text = glyph
         glyphLabel.isHidden = glyph == nil
         glyphLabel.fontColor = UIColor.black.withAlphaComponent(style == .ghost ? 0.25 : 0.45)

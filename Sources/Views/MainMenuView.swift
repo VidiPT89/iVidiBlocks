@@ -23,7 +23,7 @@ struct MainMenuView: View {
 
     var body: some View {
         ZStack {
-            if !reduceMotion { DriftingPiecesBackdrop() }
+
 
             ScrollView {
                 VStack(spacing: 22) {
@@ -94,7 +94,9 @@ struct MainMenuView: View {
             }
 
             Text(loc.string(.appName))
-                .font(.display(46))
+                .font(.display(36))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
                 .foregroundStyle(.brandGradient)
                 .shadow(color: .brandOrange.opacity(0.35), radius: 18)
                 .accessibilityAddTraits(.isHeader)
@@ -164,7 +166,7 @@ private struct ModeCard: View {
         Button(action: action) {
             HStack(spacing: 16) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    RoundedRectangle(cornerRadius: 3, style: .continuous)
                         .fill(.brandGradient)
                         .frame(width: 52, height: 52)
                     Image(systemName: mode.symbolName)

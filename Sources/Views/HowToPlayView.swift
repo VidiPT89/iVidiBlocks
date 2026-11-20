@@ -8,8 +8,7 @@ struct HowToPlayView: View {
         ("arrow.left.and.right", .howToControlsMove),
         ("arrow.clockwise", .howToControlsRotate),
         ("arrow.down", .howToControlsSoft),
-        ("arrow.down.to.line", .howToControlsHard),
-        ("dot.radiowaves.left.and.right", .howToControlsPulse)
+        ("arrow.down.to.line", .howToControlsHard)
     ]
 
     var body: some View {
@@ -41,7 +40,7 @@ struct HowToPlayView: View {
 
     private var pieceGallery: some View {
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 42))], spacing: 10) {
-            ForEach(Shard.all.filter { $0.color.rawValue == $0.shape.rawValue % ShardColor.allCases.count },
+            ForEach(Shard.all,
                     id: \.self) { shard in
                 PieceThumbnail(shard: shard, cellSize: 12)
                     .frame(height: 26)

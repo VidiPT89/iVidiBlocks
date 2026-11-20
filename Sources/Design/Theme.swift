@@ -29,7 +29,7 @@ extension ShapeStyle where Self == LinearGradient {
 }
 
 enum Layout {
-    static let cornerRadius: CGFloat = 20
+    static let cornerRadius: CGFloat = 3
     static let cardPadding: CGFloat = 18
     static let minimumTapTarget: CGFloat = 44
 }
@@ -37,12 +37,12 @@ enum Layout {
 extension Font {
     /// Rounded display face for titles and anything numeric.
     static func display(_ size: CGFloat, weight: Font.Weight = .heavy) -> Font {
-        .system(size: size, weight: weight, design: .rounded)
+        .system(size: size, weight: weight, design: .monospaced)
     }
 
     /// Counters use monospaced digits so they never jitter as they climb.
     static func counter(_ size: CGFloat, weight: Font.Weight = .bold) -> Font {
-        .system(size: size, weight: weight, design: .rounded).monospacedDigit()
+        .system(size: size, weight: weight, design: .monospaced).monospacedDigit()
     }
 }
 
@@ -52,22 +52,7 @@ struct BrandBackground: View {
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        ZStack {
-            Color.bgPrimary
-            LinearGradient(
-                colors: scheme == .dark
-                    ? [Color.brandEmber.opacity(0.28), .clear, Color.brandOrange.opacity(0.10)]
-                    : [Color.brandAmber.opacity(0.10), .clear, Color.brandOrange.opacity(0.04)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            RadialGradient(
-                colors: [Color.brandOrange.opacity(scheme == .dark ? 0.18 : 0.05), .clear],
-                center: .top,
-                startRadius: 0,
-                endRadius: 420
-            )
-        }
+        Color.bgPrimary
         .ignoresSafeArea()
     }
 }
@@ -76,12 +61,12 @@ extension View {
     /// Card surface shared by menu tiles, HUD panels and settings groups.
     func brandCard(cornerRadius: CGFloat = Layout.cornerRadius) -> some View {
         background(
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            RoundedRectangle(cornerRadius: min(cornerRadius, 4), style: .continuous)
                 .fill(Color.bgElevated)
                 .shadow(color: .black.opacity(0.22), radius: 14, y: 6)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            RoundedRectangle(cornerRadius: min(cornerRadius, 4), style: .continuous)
                 .strokeBorder(Color.brandOrange.opacity(0.16), lineWidth: 1)
         )
     }

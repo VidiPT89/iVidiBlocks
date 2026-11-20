@@ -1,6 +1,6 @@
 /* App identity */
 "app.name" = "iVidiBlocks";
-"app.tagline" = "Spin the well. Fuse the rings.";
+"app.tagline" = "BLOCKS • LINES • HIGH SCORE";
 
 /* Splash */
 "splash.developedBy" = "Developed by David Arsénio Martins";
@@ -21,17 +21,17 @@
 "menu.replaceSaved.message" = "Your unfinished run will be discarded.";
 
 /* Game modes */
-"mode.orbit" = "Orbit";
-"mode.orbit.desc" = "Endless. The well spins faster as you go.";
-"mode.target" = "Target";
-"mode.target.desc" = "Clear 160 shards as fast as you can.";
+"mode.orbit" = "Classic";
+"mode.orbit.desc" = "Complete lines. Speed increases every 10 lines.";
+"mode.target" = "40 lines";
+"mode.target.desc" = "Clear 40 lines as quickly as possible.";
 "mode.blitz" = "Blitz";
 "mode.blitz.desc" = "Score as high as possible in 2 minutes.";
 
 /* HUD */
 "hud.score" = "Score";
 "hud.level" = "Level";
-"hud.shards" = "Shards";
+"hud.shards" = "Lines";
 "hud.time" = "Time";
 "hud.core" = "Core";
 "hud.coreReady" = "Pulse ready";
@@ -39,8 +39,8 @@
 "hud.chain" = "Chain";
 
 /* In-game banners */
-"game.ring" = "RING";
-"game.rings" = "MULTI-RING";
+"game.ring" = "LINE!";
+"game.rings" = "MULTILINE!";
 "game.arc" = "ARC FUSION";
 "game.chain" = "CHAIN";
 "game.pulse" = "CORE PULSE";
@@ -94,9 +94,9 @@
 "stats.records" = "Records";
 "stats.lifetime" = "Lifetime";
 "stats.games" = "Games played";
-"stats.pieces" = "Shards placed";
-"stats.shards" = "Shards cleared";
-"stats.rings" = "Rings closed";
+"stats.pieces" = "Pieces placed";
+"stats.shards" = "Blocks cleared";
+"stats.rings" = "Lines cleared";
 "stats.arcs" = "Arcs fused";
 "stats.pulses" = "Core pulses";
 "stats.timePlayed" = "Time played";
@@ -106,26 +106,26 @@
 /* How to play */
 "howto.title" = "How to play";
 "howto.goal" = "Goal";
-"howto.goal.body" = "Shards fall from the rim towards the core. Close a whole ring, or line up five cells of one colour along a ring, to clear them. Everything outside slides inwards. The game ends when a shard can no longer enter the well.";
+"howto.goal.body" = "Move and rotate seven four-block pieces. Fill horizontal rows of 10 blocks to clear them. Rows above move down. The game ends when the stack reaches the top. Colours do not affect the rules.";
 "howto.controls" = "Controls";
-"howto.controls.move" = "Drag left or right to turn the well under the shard";
-"howto.controls.rotate" = "Tap either side of the board to turn the shard";
+"howto.controls.move" = "Drag sideways or hold the arrow buttons to move the piece";
+"howto.controls.rotate" = "Tap the left or right side of the board to rotate in that direction";
 "howto.controls.soft" = "Drag down to fall faster";
-"howto.controls.hard" = "Swipe down to drop straight to the core";
+"howto.controls.hard" = "Swipe down quickly or use the hard drop button";
 "howto.controls.pulse" = "Swipe up, or tap the core, to fire a charged pulse";
 "howto.scoring" = "Scoring";
-"howto.scoring.body" = "Every cleared cell scores, a closed ring adds a bonus and a fused arc adds another. When cells slide inwards and line up into a new clear, that is a chain: each link multiplies the whole step. Cleared cells also charge the core.";
+"howto.scoring.body" = "Clear one, two, three or four lines at once for 40, 100, 300 or 1200 points multiplied by the level. Every 10 lines increases the level in Classic. Soft drop earns 1 point per cell and hard drop earns 2.";
 "howto.tips" = "Tips";
-"howto.tips.body" = "Build arcs of one colour while you wait for a ring to close. Leave colour pairs outside an almost-finished arc to set up chains. Keep the pulse for emergencies near the rim. The faded outline shows where a drop will land. Guided practice in the menu walks through each idea.";
+"howto.tips.body" = "Keep the stack low and avoid holes. Leave a column for the long piece to clear four lines at once. One upcoming piece is shown. Enable the landing guide in Settings if needed.";
 
 
 /* On-screen controls (VoiceOver) */
-"controls.left" = "Turn the well left";
-"controls.right" = "Turn the well right";
-"controls.rotateCW" = "Turn shard clockwise";
-"controls.rotateCCW" = "Turn shard counter-clockwise";
+"controls.left" = "Move left";
+"controls.right" = "Move right";
+"controls.rotateCW" = "Rotate clockwise";
+"controls.rotateCCW" = "Rotate counterclockwise";
 "controls.softDrop" = "Fall faster";
-"controls.hardDrop" = "Drop to the core";
+"controls.hardDrop" = "Hard drop";
 "controls.pulse" = "Core pulse";
 
 /* Generic */
@@ -134,18 +134,18 @@
 /* Guided practice */
 "menu.practice" = "Guided practice";
 "practice.title" = "Guided practice";
-"practice.intro" = "Six short drills on wells built for each idea, from the first drop to chains and the core pulse. Each one deals only the shards you need.";
+"practice.intro" = "Three drills to learn placement, movement and clearing four lines at once.";
 "practice.done" = "Completed";
 "practice.passed" = "Well done!";
 "practice.failed" = "Not this time";
 "practice.next" = "Next drill";
 "practice.retry" = "Try again";
-"lesson.drop" = "Drop to the core";
-"lesson.drop.hint" = "Swipe down, or press the drop button, to send the shard into the gap and close the ring.";
-"lesson.spin" = "Spin the well";
-"lesson.spin.hint" = "The gap is on the far side. Drag sideways to turn the well until the gap sits under the shard, then drop it.";
-"lesson.rotate" = "Turn a shard";
-"lesson.rotate.hint" = "Tap the board to stand the shard on end, turn the well to the narrow gap and close two rings at once.";
+"lesson.drop" = "Place the square";
+"lesson.drop.hint" = "Drop the square into the centre gap to clear two lines.";
+"lesson.spin" = "Move sideways";
+"lesson.spin.hint" = "Move the square to the gap on the left and drop it.";
+"lesson.rotate" = "Four lines";
+"lesson.rotate.hint" = "Rotate the long piece vertically and fit it into the empty column to clear four lines.";
 "lesson.arc" = "Fuse an arc";
 "lesson.arc.hint" = "Five cells of one colour side by side fuse and clear, even in a ring that is not full. Drop the amber shard next to the other three.";
 "lesson.chain" = "Chain reaction";

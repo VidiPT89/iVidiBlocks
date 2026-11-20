@@ -84,8 +84,8 @@ final class SettingsStore: ObservableObject {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        theme = AppTheme(rawValue: defaults.string(forKey: Key.theme.rawValue) ?? "") ?? .system
-        ghostEnabled = defaults.object(forKey: Key.ghost.rawValue) as? Bool ?? true
+        theme = AppTheme(rawValue: defaults.string(forKey: Key.theme.rawValue) ?? "") ?? .dark
+        ghostEnabled = defaults.object(forKey: Key.ghost.rawValue) as? Bool ?? false
         // Clamped on the way in: a value from an older build or a hand-edited
         // plist must not reach the engine, where a DAS of zero would slam the
         // piece into the wall on the lightest touch.
@@ -93,7 +93,7 @@ final class SettingsStore: ObservableObject {
                                   to: SettingsStore.dasRange, fallback: SettingsStore.defaultDas)
         arr = SettingsStore.clamp(defaults.object(forKey: Key.arr.rawValue) as? Double,
                                   to: SettingsStore.arrRange, fallback: SettingsStore.defaultArr)
-        onScreenButtons = defaults.object(forKey: Key.onScreenButtons.rawValue) as? Bool ?? false
+        onScreenButtons = defaults.object(forKey: Key.onScreenButtons.rawValue) as? Bool ?? true
         handedness = Handedness(rawValue: defaults.string(forKey: Key.handedness.rawValue) ?? "") ?? .right
         musicEnabled = defaults.object(forKey: Key.music.rawValue) as? Bool ?? true
         sfxEnabled = defaults.object(forKey: Key.sfx.rawValue) as? Bool ?? true

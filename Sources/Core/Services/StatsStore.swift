@@ -77,7 +77,7 @@ final class StatsStore: ObservableObject {
     init(fileURL: URL? = nil) {
         self.fileURL = fileURL ?? FileManager.default
             .urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("stats.json")
+            .appendingPathComponent("classic-stats.json")
         load()
     }
 

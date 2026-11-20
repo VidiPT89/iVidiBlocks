@@ -19,22 +19,23 @@ final class StoreScreenshotTests: XCTestCase {
         Device(name: "ipad", points: CGSize(width: 1032, height: 1376), scale: 2)
     ]
 
-    /// An Orbit run well under way: a colourful well with a bent shard on
-    /// its way in and the core two-thirds charged.
+    /// A Classic run well under way: a ragged stack with a well on the
+    /// right, waiting for a long piece.
     private func runInProgress() throws -> GameSnapshot {
-        let rings = ["eatteaat.ettaeat", "taeat.ettaa.teae",
-                     "at.e.aatt..eat..", "ea.t.a.t...at..."]
-        let colors: [Character: ShardColor] = ["e": .ember, "a": .amber, "t": .tide]
+        let rows = ["lljjoozzs.", "ilttoszzs.", "ijtsso.lli", "ijjjooll.i",
+                    ".tt.zz..ii", "..t..zz..."]
+        let colors: [Character: ShardColor] = ["l": .ember, "o": .amber, "i": .tide, "t": .violet,
+                                               "s": .green, "z": .red, "j": .blue]
         var board = Board()
-        for (offset, ring) in rings.enumerated() {
-            for (x, mark) in ring.enumerated() { board[x, Board.rings - 1 - offset] = colors[mark] }
+        for (offset, row) in rows.enumerated() {
+            for (x, mark) in row.enumerated() { board[x, Board.rings - 1 - offset] = colors[mark] }
         }
         XCTAssertTrue(board.scan().isEmpty)
-        let piece = Piece(shard: Shard(shape: .bend, color: .tide), origin: Point(x: 2, y: 4))
+        let piece = Piece(shard: Shard.all.first { $0.shape == .t }!, origin: Point(x: 3, y: 3))
         let saved = GameSnapshot(mode: .orbit, startLevel: 1, cells: board.cells, current: piece,
                                  aim: 2, queue: Array(Shard.all.prefix(6)),
-                                 pendingClear: [], chain: 0, charge: 24, score: 18_420,
-                                 shards: 150, level: ScoreCalculator.level(forTotalShards: 150),
+                                 pendingClear: [], chain: 0, charge: 24, score: 6_820,
+                                 shards: 34, level: ScoreCalculator.level(forTotalShards: 34),
                                  elapsed: 512, stats: RunStats(), lockResets: 0, lowestRingReached: 4)
         XCTAssertNotNil(GameEngine(restoring: saved))
         return saved
@@ -75,7 +76,7 @@ final class StoreScreenshotTests: XCTestCase {
                 ("2-practice", AnyView(PracticeView(onStart: { _ in }))),
                 ("3-chain", AnyView(GameView(mode: .orbit, settings: settings, stats: stats,
                                              savedGames: savedGames, audio: audio, haptics: haptics,
-                                             localization: loc, lesson: Lesson.all[4], onExit: {}))),
+                                             localization: loc, lesson: Lesson.all[2], onExit: {}))),
                 ("4-menu", AnyView(ZStack {
                     BrandBackground()
                     MainMenuView(onPlay: { _, _ in }, onPractice: { _ in })

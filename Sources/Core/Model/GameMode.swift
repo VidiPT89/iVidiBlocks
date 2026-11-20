@@ -25,14 +25,14 @@ enum GameMode: String, CaseIterable, Identifiable, Codable {
 
     var symbolName: String {
         switch self {
-        case .orbit: return "circle.dashed"
+        case .orbit: return "square.grid.3x3.fill"
         case .target: return "scope"
         case .blitz: return "timer"
         }
     }
 
     /// Cleared cells that end a Target run.
-    var shardTarget: Int? { self == .target ? 160 : nil }
+    var shardTarget: Int? { self == .target ? 40 : nil }
 
     /// Seconds on the clock for a timed mode.
     var timeLimit: TimeInterval? { self == .blitz ? 120 : nil }

@@ -48,7 +48,7 @@ final class SavedGameTests: XCTestCase {
         XCTAssertNil(engine.snapshot(), "pausing the countdown leaves nothing to resume")
 
         var blocked = Board()
-        for y in 0..<Board.rings { blocked[0, y] = .tide }
+        for y in 0..<4 { for x in 0..<10 { blocked[x, y] = .tide } }
         let over = GameEngine(mode: .orbit, board: blocked)
         over.startImmediately()
         XCTAssertNil(over.snapshot())
@@ -100,7 +100,7 @@ final class SavedGameTests: XCTestCase {
     }
 
     func testARunSavedMidClearFinishesTheClearOnResume() throws {
-        let lesson = try XCTUnwrap(Lesson.all.first { $0.goal == .chain(2) })
+        let lesson = try XCTUnwrap(Lesson.all.first)
         let engine = GameEngine(mode: .target, random: LessonPieces(order: lesson.pieces),
                                 board: lesson.board)
         engine.startImmediately()
@@ -114,9 +114,9 @@ final class SavedGameTests: XCTestCase {
         restored.resume()
         XCTAssertEqual(restored.phase, .clearing)
         advance(restored, by: GameEngine.clearDuration + 0.05)
-        XCTAssertEqual(restored.phase, .clearing, "the cascade's second link follows")
-        XCTAssertEqual(restored.chain, 2)
-        XCTAssertEqual(restored.shards, saved.shards + saved.pendingClear.count)
+        XCTAssertEqual(restored.phase, .playing)
+        XCTAssertEqual(restored.chain, 0)
+        XCTAssertEqual(restored.shards, saved.shards + saved.pendingClear.count / Board.sectors)
     }
 
     func testImpossibleSnapshotsAreRefused() throws {

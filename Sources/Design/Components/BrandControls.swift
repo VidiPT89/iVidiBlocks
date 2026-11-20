@@ -14,7 +14,7 @@ struct BrandButtonStyle: ButtonStyle {
             .padding(.horizontal, 24)
             .padding(.vertical, 14)
             .background {
-                let shape = Capsule(style: .continuous)
+                let shape = RoundedRectangle(cornerRadius: 3)
                 if prominent {
                     shape.fill(.brandGradient)
                         .shadow(color: .brandOrange.opacity(0.45), radius: 16, y: 6)
@@ -159,7 +159,7 @@ struct PieceThumbnail: View {
                                   y: CGFloat(cell.y - box.minY) * cellSize,
                                   width: cellSize, height: cellSize)
                     .insetBy(dx: cellSize * 0.06, dy: cellSize * 0.06)
-                let path = Path(roundedRect: rect, cornerRadius: cellSize * 0.2)
+                let path = Path(roundedRect: rect, cornerRadius: 0)
                 context.fill(path, with: .color(Color.piece(shard.color)))
                 context.stroke(path, with: .color(.white.opacity(0.28)), lineWidth: 1)
             }

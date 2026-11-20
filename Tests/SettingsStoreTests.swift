@@ -18,11 +18,11 @@ final class SettingsStoreTests: XCTestCase {
     func testFreshInstallUsesTheDocumentedDefaults() {
         let settings = SettingsStore(defaults: defaults)
 
-        XCTAssertEqual(settings.theme, .system)
-        XCTAssertTrue(settings.ghostEnabled)
+        XCTAssertEqual(settings.theme, .dark)
+        XCTAssertFalse(settings.ghostEnabled)
         XCTAssertEqual(settings.das, SettingsStore.defaultDas)
         XCTAssertEqual(settings.arr, SettingsStore.defaultArr)
-        XCTAssertFalse(settings.onScreenButtons)
+        XCTAssertTrue(settings.onScreenButtons)
         XCTAssertEqual(settings.handedness, .right)
         XCTAssertFalse(settings.colorBlindMode)
     }
@@ -59,7 +59,7 @@ final class SettingsStoreTests: XCTestCase {
     func testAnUnknownStoredThemeFallsBackToSystem() {
         defaults.set("sepia", forKey: "settings.theme")
 
-        XCTAssertEqual(SettingsStore(defaults: defaults).theme, .system)
+        XCTAssertEqual(SettingsStore(defaults: defaults).theme, .dark)
     }
 
     func testTheThemeButtonCyclesThroughAllThree() {

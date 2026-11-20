@@ -175,7 +175,7 @@ final class GameEngine {
     }
 
     var canPulse: Bool {
-        phase == .playing && current != nil && charge >= GameEngine.pulseCost
+        false
     }
 
     /// Pulse charge as a fraction, for the core meter.
@@ -402,42 +402,14 @@ final class GameEngine {
     /// them slide in at once, and the falling shard is pushed back out if
     /// anything slid into its way.
     func pulse() {
-        guard canPulse, var piece = current else {
-            events.append(.pulseRejected)
-            return
-        }
-        let innermost = (Board.rings - GameEngine.pulseRings)..<Board.rings
-        let doomed = Set(innermost.flatMap { y in
-            (0..<Board.sectors).compactMap { x in board[x, y] == nil ? nil : Point(x: x, y: y) }
-        })
-        guard !doomed.isEmpty else {
-            events.append(.pulseRejected)
-            return
-        }
-
-        charge = 0
-        board.remove(doomed)
-        while !board.canPlace(piece) {
-            guard piece.origin.y > 0 else {
-                finish(.topOut)
-                return
-            }
-            piece = piece.moved(dx: 0, dy: -1)
-        }
-        setCurrent(piece)
-
-        let points = ScoreCalculator.pulsePoints(cells: doomed.count, level: level)
-        score += points
-        stats.pulses += 1
-        events.append(.pulsed(cells: doomed.sorted(by: Self.cellOrder), points: points))
-        _ = addProgress(cells: doomed.count, chargesCore: false)
+        events.append(.pulseRejected)
     }
 
     // MARK: Piece lifecycle
 
     private func setCurrent(_ piece: Piece) {
         current = piece
-        aim = piece.origin.x
+        aim = min(max(piece.origin.x, 0), Board.sectors - 1)
         if piece.origin.y > lowestRingReached {
             lowestRingReached = piece.origin.y
             lockResets = 0
@@ -459,7 +431,7 @@ final class GameEngine {
         piecesDealt += 1
         preview = bag.preview
 
-        var piece = Piece(shard: shard, origin: Point(x: aim, y: Board.bufferRings - 1))
+        var piece = Piece(shard: shard, origin: Point(x: 3, y: Board.bufferRings - 1))
         guard board.canPlace(piece) else {
             finish(.topOut)
             return
@@ -491,7 +463,7 @@ final class GameEngine {
         events.append(.locked(piece: piece))
 
         // Lock out: the whole shard came to rest outside the rim.
-        if piece.cells.allSatisfy({ $0.y < Board.bufferRings }) {
+        if piece.cells.contains(where: { $0.y < Board.bufferRings }) {
             finish(.topOut)
             return
         }
@@ -531,28 +503,16 @@ final class GameEngine {
         board.remove(Set(cells))
         guard addProgress(cells: cells.count, chargesCore: true) else { return }
 
-        // Whatever slid inwards may have lined up into something new.
-        let cascade = board.scan()
-        if cascade.isEmpty {
-            chain = 0
-            phase = .playing
-            spawnNextPiece()
-        } else {
-            chain += 1
-            beginClear(cascade)
-        }
+        chain = 0
+        phase = .playing
+        spawnNextPiece()
     }
 
     /// Banks cleared cells towards level, target and the core.
     /// - Returns: `false` when this ended the run.
     private func addProgress(cells: Int, chargesCore: Bool) -> Bool {
-        shards += cells
+        shards += cells / Board.sectors
         stats.shardsCleared += cells
-
-        if chargesCore, charge < GameEngine.pulseCost {
-            charge = min(GameEngine.pulseCost, charge + cells)
-            if charge == GameEngine.pulseCost { events.append(.coreCharged) }
-        }
 
         if mode.levelsUp {
             let newLevel = ScoreCalculator.level(forTotalShards: shards,
@@ -578,7 +538,7 @@ final class GameEngine {
             let cells = pendingClear
             pendingClear = []
             board.remove(Set(cells))
-            shards += cells.count
+            shards += cells.count / Board.sectors
             stats.shardsCleared += cells.count
         }
         phase = .over(reason)

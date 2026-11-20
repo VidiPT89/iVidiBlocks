@@ -122,14 +122,6 @@ struct StatsView: View {
                 StatRow(label: loc.string(.statsRings),
                         value: stats.lifetime.ringsCleared.formatted(),
                         highlighted: true)
-                StatRow(label: loc.string(.statsArcs),
-                        value: stats.lifetime.arcsFused.formatted(),
-                        highlighted: true)
-                StatRow(label: loc.string(.statsPulses),
-                        value: stats.lifetime.pulses.formatted())
-                StatRow(label: loc.string(.statsBestChain),
-                        value: stats.lifetime.bestChain.formatted(),
-                        highlighted: true)
                 StatRow(label: loc.string(.statsTimePlayed),
                         value: TimeFormat.duration(stats.lifetime.timePlayed))
             }

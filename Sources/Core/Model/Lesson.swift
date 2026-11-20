@@ -57,30 +57,15 @@ struct Lesson: Identifiable, Equatable {
     }
 
     static let all: [Lesson] = [
-        Lesson(id: "drop", titleKey: .lessonDrop, instructionKey: .lessonDropHint,
-               goal: .clearRing, pieces: [Shard(shape: .duo, color: .amber)],
-               rings: ["..tetatetatetate"]),
-        Lesson(id: "spin", titleKey: .lessonSpin, instructionKey: .lessonSpinHint,
-               goal: .clearRing, pieces: [Shard(shape: .duo, color: .amber)],
-               rings: ["tetateta..tetate"]),
-        Lesson(id: "rotate", titleKey: .lessonRotate, instructionKey: .lessonRotateHint,
-               goal: .clearRing, pieces: [Shard(shape: .duo, color: .tide)],
-               rings: ["teta.atetatetate",
-                       "etat.tetatetatet"]),
-        Lesson(id: "arc", titleKey: .lessonArc, instructionKey: .lessonArcHint,
-               goal: .clearArc, pieces: [Shard(shape: .duo, color: .amber)],
-               rings: ["..aaatetet.tetet"]),
-        Lesson(id: "chain", titleKey: .lessonChain, instructionKey: .lessonChainHint,
-               goal: .chain(2), pieces: [Shard(shape: .duo, color: .amber)],
-               rings: ["..aaattte.etaeae",
-                       "..ttt..........."]),
-        Lesson(id: "pulse", titleKey: .lessonPulse, instructionKey: .lessonPulseHint,
-               goal: .pulse,
-               pieces: Array(repeating: Shard(shape: .spark, color: .ember), count: 3),
-               rings: ["teta.etat.eta.et",
-                       "a.et.at.ea.te.ta",
-                       "et.a.te..at.e.t."],
-               charged: true)
+        Lesson(id: "classic-drop", titleKey: .lessonDrop, instructionKey: .lessonDropHint,
+               goal: .clearRing, pieces: [Shard(shape: .o, color: .amber)],
+               rings: ["teta..teta", "atet..atet"]),
+        Lesson(id: "classic-move", titleKey: .lessonSpin, instructionKey: .lessonSpinHint,
+               goal: .clearRing, pieces: [Shard(shape: .o, color: .amber)],
+               rings: ["..tetateta", "..atetatet"]),
+        Lesson(id: "classic-quad", titleKey: .lessonRotate, instructionKey: .lessonRotateHint,
+               goal: .clearRing, pieces: [Shard(shape: .i, color: .tide)],
+               rings: Array(repeating: "tetat.teta", count: 4))
     ]
 }
 

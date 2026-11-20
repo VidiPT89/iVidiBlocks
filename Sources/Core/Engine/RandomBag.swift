@@ -11,12 +11,11 @@ struct SystemPieceRandom: PieceRandomSource {
     }
 }
 
-/// Deals shards in bags of twelve, every outline in every colour once, so
-/// no colour can go missing long enough to make arcs impossible.
+/// Deals each of the seven tetrominoes once per shuffled bag.
 struct RandomBag {
     /// How many upcoming shards the preview shows. The HUD draws exactly
     /// this many, so queueing more would only be waste.
-    static let previewCount = 4
+    static let previewCount = 1
 
     private(set) var queue: [Shard] = []
     private var random: PieceRandomSource

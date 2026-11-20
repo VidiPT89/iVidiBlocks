@@ -74,7 +74,7 @@ final class LayoutTests: XCTestCase {
             ("practice-list", AnyView(PracticeView(onStart: { _ in }))),
             ("drill-chain", AnyView(GameView(mode: .orbit, settings: settings, stats: stats,
                                              savedGames: savedGames, audio: audio, haptics: haptics,
-                                             localization: loc, lesson: Lesson.all[4], onExit: {})))
+                                             localization: loc, lesson: Lesson.all[2], onExit: {})))
         ]
         for (name, view) in screens {
             let root = view

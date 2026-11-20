@@ -13,7 +13,7 @@ final class SavedGameStore: ObservableObject {
     init(fileURL: URL? = nil) {
         self.fileURL = fileURL ?? FileManager.default
             .urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("saved-run.json")
+            .appendingPathComponent("classic-saved-run.json")
         load()
     }
 

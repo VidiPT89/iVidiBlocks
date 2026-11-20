@@ -82,14 +82,9 @@ final class GameViewModelTests: XCTestCase {
         XCTAssertGreaterThan(try XCTUnwrap(model.engine.current).origin.x, before)
     }
 
-    func testPulseAvailabilityFollowsTheChargeAndResetsOnRestart() async throws {
-        let lesson = try XCTUnwrap(Lesson.all.first { $0.charged })
-        let (model, _) = makeModel(lesson: lesson)
+    func testClassicGameHasNoPulse() async throws {
+        let (model, _) = makeModel()
         model.engine.startImmediately()
-        model.syncFromEngine(model.engine)
-        XCTAssertTrue(model.canPulse)
-        XCTAssertEqual(model.charge, 1)
-        model.pulse()
         model.syncFromEngine(model.engine)
         XCTAssertFalse(model.canPulse)
         XCTAssertEqual(model.charge, 0)
@@ -168,15 +163,15 @@ final class GameViewModelTests: XCTestCase {
     }
 
     func testADrillPreviewsOnlyTheShardsItStillDeals() async throws {
-        let lesson = try XCTUnwrap(Lesson.all.first { $0.id == "pulse" })
+        let lesson = try XCTUnwrap(Lesson.all.first)
         let (model, _) = makeModel(lesson: lesson)
-        XCTAssertEqual(model.preview.count, 3)
+        XCTAssertEqual(model.preview.count, 1)
         model.engine.startImmediately()
         model.syncFromEngine(model.engine)
-        XCTAssertEqual(model.preview.count, 2)
+        XCTAssertEqual(model.preview.count, 0)
         model.engine.hardDrop()
         model.syncFromEngine(model.engine)
-        XCTAssertEqual(model.preview.count, 1)
+        XCTAssertEqual(model.preview.count, 0)
     }
 
     func testPassingADrillMarksItDoneAndAnnouncesTheResult() async throws {

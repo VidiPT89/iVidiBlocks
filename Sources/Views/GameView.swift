@@ -114,14 +114,16 @@ struct GameView: View {
     /// always fits the space left over and never pushes anything off screen.
     private var board: some View {
         GeometryReader { proxy in
-            let side = min(proxy.size.width, proxy.size.height)
+            let height = min(proxy.size.width * 2, proxy.size.height)
+            let width = height / 2
 
             ZStack {
                 if let scene {
                     SpriteView(scene: scene, options: [.allowsTransparency])
-                        .frame(width: side, height: side)
-                        .clipShape(Circle())
-                        .overlay(Circle().strokeBorder(Color.brandOrange.opacity(0.28), lineWidth: 1.5))
+                        .frame(width: width, height: height)
+                        .background(Color.black)
+                        .clipShape(Rectangle())
+                        .overlay(Rectangle().strokeBorder(Color.gray, lineWidth: 3))
                         .shadow(color: .black.opacity(0.35), radius: 18, y: 8)
                 }
 
@@ -227,7 +229,7 @@ private struct OnScreenControls: View {
     }
 
     private var horizontalControls: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 4) {
             if handedness == .left {
                 actionCluster
                 Spacer(minLength: 0)
@@ -241,7 +243,7 @@ private struct OnScreenControls: View {
     }
 
     private var moveCluster: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 4) {
             ControlButton(symbol: "arrow.left",
                           label: loc.string(.controlsLeft),
                           onPress: { model.horizontalInput(-1, pressed: true) },
@@ -259,15 +261,14 @@ private struct OnScreenControls: View {
     }
 
     private var actionCluster: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 4) {
             ControlButton(symbol: "arrow.counterclockwise",
                           label: loc.string(.controlsRotateCCW)) { model.rotateCounterClockwise() }
             ControlButton(symbol: "arrow.clockwise",
                           label: loc.string(.controlsRotateCW)) { model.rotateClockwise() }
             ControlButton(symbol: "arrow.down.to.line",
                           label: loc.string(.controlsHardDrop)) { model.hardDrop() }
-            ControlButton(symbol: "dot.radiowaves.left.and.right",
-                          label: loc.string(.controlsPulse)) { model.pulse() }
+
         }
     }
 }
@@ -304,8 +305,8 @@ private struct ControlButton: View {
             .font(.system(size: 17, weight: .bold))
             .foregroundStyle(Color.textPrimary)
             .frame(width: Layout.minimumTapTarget, height: Layout.minimumTapTarget)
-            .background(Circle().fill(held ? Color.brandOrange.opacity(0.3) : Color.bgElevated))
-            .overlay(Circle().strokeBorder(Color.brandOrange.opacity(0.3), lineWidth: 1))
+            .background(RoundedRectangle(cornerRadius: 4).fill(held ? Color.brandOrange.opacity(0.3) : Color.bgElevated))
+            .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(Color.textSecondary.opacity(0.6), lineWidth: 2))
             .scaleEffect(held ? 0.92 : 1)
             .contentShape(Circle())
             .gesture(

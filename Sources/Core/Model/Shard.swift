@@ -1,8 +1,6 @@
 import Foundation
 
-/// A cell coordinate in the well. `x` is the sector, counted clockwise from
-/// the top and wrapping around the circle. `y` is the depth, growing
-/// **inwards** from the rim towards the core.
+/// Board coordinates: x grows rightwards and y grows downwards.
 struct Point: Hashable, Codable {
     var x: Int
     var y: Int
@@ -23,37 +21,36 @@ enum RotationState: Int, CaseIterable, Codable {
     var counterClockwise: RotationState { RotationState(rawValue: (rawValue + 3) % 4)! }
 }
 
-/// The four shard outlines. None is larger than three cells, so a ring is
-/// always filled by many small decisions rather than one lucky long piece.
+/// The seven four-cell pieces and their rotation boxes.
 enum ShardShape: Int, CaseIterable, Codable {
-    case spark, duo, trio, bend
+    case i, o, t, s, z, j, l
 
-    /// Cells in the spawn state, around a pivot at (0, 0).
-    private var baseCells: [Point] {
-        switch self {
-        case .spark: return [Point(x: 0, y: 0)]
-        case .duo: return [Point(x: 0, y: 0), Point(x: 1, y: 0)]
-        case .trio: return [Point(x: -1, y: 0), Point(x: 0, y: 0), Point(x: 1, y: 0)]
-        case .bend: return [Point(x: 0, y: 0), Point(x: 1, y: 0), Point(x: 0, y: 1)]
-        }
-    }
-
-    /// Cells relative to the pivot after the given number of clockwise
-    /// quarter turns. With `y` pointing inwards, a clockwise turn maps
-    /// (x, y) to (-y, x).
     func cells(in state: RotationState) -> [Point] {
-        baseCells.map { cell in
-            var point = cell
-            for _ in 0..<state.rawValue { point = Point(x: -point.y, y: point.x) }
+        let coordinates: [(Int, Int)]
+        switch self {
+        case .i: coordinates = [(0,1),(1,1),(2,1),(3,1)]
+        case .o: coordinates = [(1,0),(2,0),(1,1),(2,1)]
+        case .t: coordinates = [(1,0),(0,1),(1,1),(2,1)]
+        case .s: coordinates = [(1,0),(2,0),(0,1),(1,1)]
+        case .z: coordinates = [(0,0),(1,0),(1,1),(2,1)]
+        case .j: coordinates = [(0,0),(0,1),(1,1),(2,1)]
+        case .l: coordinates = [(2,0),(0,1),(1,1),(2,1)]
+        }
+        return coordinates.map { x, y in
+            var point = Point(x: x, y: y)
+            if self != .o {
+                for _ in 0..<state.rawValue {
+                    point = Point(x: (self == .i ? 3 : 2) - point.y, y: point.x)
+                }
+            }
             return point
         }
     }
 }
 
-/// The three shard colours. Five of one colour side by side in a ring fuse
-/// into an arc and clear, even when the ring itself is not full.
+/// Piece colours are visual identifiers; only complete rows clear.
 enum ShardColor: Int, CaseIterable, Codable {
-    case ember, amber, tide
+    case ember, amber, tide, violet, green, red, blue
 
     /// Name of the colour set in `Assets.xcassets`.
     var colorName: String {
@@ -61,6 +58,10 @@ enum ShardColor: Int, CaseIterable, Codable {
         case .ember: return "PieceL"
         case .amber: return "PieceO"
         case .tide: return "PieceI"
+        case .violet: return "PieceT"
+        case .green: return "PieceS"
+        case .red: return "PieceZ"
+        case .blue: return "PieceJ"
         }
     }
 
@@ -71,6 +72,10 @@ enum ShardColor: Int, CaseIterable, Codable {
         case .ember: return "●"
         case .amber: return "▲"
         case .tide: return "■"
+        case .violet: return "◆"
+        case .green: return "+"
+        case .red: return "×"
+        case .blue: return "="
         }
     }
 }
@@ -81,9 +86,10 @@ struct Shard: Hashable, Codable {
     var color: ShardColor
 
     /// Every outline in every colour, the contents of one bag.
-    static let all: [Shard] = ShardShape.allCases.flatMap { shape in
-        ShardColor.allCases.map { Shard(shape: shape, color: $0) }
-    }
+    static let all: [Shard] = zip(ShardShape.allCases,
+        [ShardColor.tide, .amber, .violet, .green, .red, .blue, .ember])
+        .map { Shard(shape: $0.0, color: $0.1) }
+
 }
 
 /// A shard in the well: what it is, how it is turned and where its pivot
@@ -96,15 +102,15 @@ struct Piece: Equatable, Codable {
     init(shard: Shard, state: RotationState = .spawn, origin: Point) {
         self.shard = shard
         self.state = state
-        self.origin = Point(x: Board.wrap(origin.x), y: origin.y)
+        self.origin = Point(x: origin.x, y: origin.y)
     }
 
     var color: ShardColor { shard.color }
 
-    /// Absolute well coordinates, with sectors wrapped around the circle.
+    /// Absolute board coordinates, without wrapping.
     var cells: [Point] {
         shard.shape.cells(in: state).map { offset in
-            Point(x: Board.wrap(origin.x + offset.x), y: origin.y + offset.y)
+            Point(x: origin.x + offset.x, y: origin.y + offset.y)
         }
     }
 
@@ -117,7 +123,7 @@ struct Piece: Equatable, Codable {
 
     func moved(dx: Int, dy: Int) -> Piece {
         var copy = self
-        copy.origin = Point(x: Board.wrap(origin.x + dx), y: origin.y + dy)
+        copy.origin = Point(x: origin.x + dx, y: origin.y + dy)
         return copy
     }
 

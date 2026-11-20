@@ -10,56 +10,24 @@ struct HUDView: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
-            coreSlot
             counters
             nextQueue
         }
     }
 
-    // MARK: Core
-
-    /// The pulse charge as a ring. Tapping it fires the pulse once full.
-    private var coreSlot: some View {
-        Button(action: model.pulse) {
-            panel(title: loc.string(.hudCore)) {
-                ZStack {
-                    Circle()
-                        .stroke(Color.textSecondary.opacity(0.25), lineWidth: 4)
-                    Circle()
-                        .trim(from: 0, to: model.charge)
-                        .stroke(model.canPulse ? AnyShapeStyle(.brandGradient)
-                                               : AnyShapeStyle(Color.brandOrange.opacity(0.8)),
-                                style: StrokeStyle(lineWidth: 4, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                    Image(systemName: "dot.radiowaves.left.and.right")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(model.canPulse ? Color.brandAmber : Color.textSecondary)
-                }
-                .frame(width: 26, height: 26)
-                .animation(.easeOut(duration: 0.25), value: model.charge)
-            }
-        }
-        .buttonStyle(.plain)
-        .disabled(!model.canPulse)
-        .accessibilityLabel(loc.string(.controlsPulse))
-        .accessibilityValue(model.canPulse ? loc.string(.hudCoreReady)
-                                           : "\(Int(model.charge * 100))%")
-    }
-
     // MARK: Counters
 
     private var counters: some View {
-        VStack(spacing: 6) {
+        HStack(spacing: 12) {
             counter(loc.string(.hudScore), value: model.score.formatted(), prominent: true)
 
-            HStack(spacing: 0) {
+            HStack(spacing: 10) {
                 ForEach(secondaryCounters, id: \.0) { label, value, urgent in
                     counter(label, value: value, urgent: urgent)
                         .frame(maxWidth: .infinity)
                 }
             }
 
-            chains
         }
         .padding(.vertical, 9)
         .padding(.horizontal, 12)
@@ -100,33 +68,6 @@ struct HUDView: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(label) \(value)")
-    }
-
-    @ViewBuilder
-    private var chains: some View {
-        HStack(spacing: 6) {
-            if model.canPulse {
-                chip(text: loc.string(.hudCoreReady), color: .brandAmber)
-            }
-            if model.chain > 1 {
-                chip(text: "\(loc.string(.hudChain)) ×\(model.chain)", color: .brandOrange)
-            }
-        }
-        .frame(height: model.canPulse || model.chain > 1 ? nil : 0)
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: model.chain)
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: model.canPulse)
-    }
-
-    private func chip(text: String, color: Color) -> some View {
-        Text(text.uppercased())
-            .font(.system(size: 9, weight: .black, design: .rounded))
-            .tracking(0.5)
-            .foregroundStyle(Color.brandInk)
-            .padding(.horizontal, 7)
-            .padding(.vertical, 3)
-            .background(Capsule().fill(color))
-            .transition(.scale.combined(with: .opacity))
-            .lineLimit(1)
     }
 
     // MARK: Next queue

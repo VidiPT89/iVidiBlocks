@@ -9,7 +9,7 @@ import Foundation
 struct GameConfig {
     var das: TimeInterval = 0.133
     var arr: TimeInterval = 0.05
-    var ghostEnabled: Bool = true
+    var ghostEnabled: Bool = false
     var startLevel: Int = 1
 
     static let `default` = GameConfig()
@@ -64,7 +64,7 @@ struct RunStats: Codable, Equatable {
 struct GameSnapshot: Codable, Equatable {
     /// Bumped whenever the layout changes. A file written by another version
     /// is discarded rather than half-read into the engine.
-    static let currentVersion = 2
+    static let currentVersion = 3
 
     var version = GameSnapshot.currentVersion
     var mode: GameMode
